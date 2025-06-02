@@ -1,55 +1,66 @@
 from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from pydantic import BaseModel
+from typing import Any, Optional, Union
+from jose import jwt, JWTError
+from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from .config import settings
-from .database import get_db
-from .password import verify_password
-from app.crud import crud_user
 
-# Security configuration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config.settings import get_settings
+from app.db.session import get_db
+from app.models.user import User
+from app.repositories.user import user_repository
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+settings = get_settings()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
-class TokenData(BaseModel):
-    email: Optional[str] = None
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+# JWT settings
+ALGORITHM = "HS256"
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Generate password hash."""
+    return pwd_context.hash(password)
+
+def create_access_token(
+    data: dict,
+    expires_delta: Union[timedelta, None] = None
+) -> str:
+    """Create JWT access token."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-):
+) -> User:
+    """Get current user from token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-        token_data = TokenData(email=email)
     except JWTError:
         raise credentials_exception
     
-    user = crud_user.get_user_by_email(db, email=token_data.email)
+    user = user_repository.get_by_email(db, email=email)
     if user is None:
         raise credentials_exception
     return user 

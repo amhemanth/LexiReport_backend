@@ -1,23 +1,37 @@
+# Web Framework
 fastapi
-uvicorn
-python-multipart
-pydantic
-pydantic-settings
-python-jose[cryptography]
-passlib[bcrypt]
+uvicorn[standard]
+
+# Database
 sqlalchemy
 alembic
-pytest
-httpx
-python-dotenv
-PyPDF2
-pandas
-openpyxl
-transformers
-spacy
-nltk
-scikit-learn
+psycopg2-binary
+asyncpg
+
+# Authentication & Security
+python-jose[cryptography]
+passlib==1.7.4
+bcrypt==4.0.1
+python-multipart
+
+# Data Validation & Settings
+pydantic
+pydantic-settings
 email-validator
-bcrypt
-passlib
-spacy
+
+# Environment Variables
+python-dotenv
+
+# Dependency Injection
+dependency-injector
+
+# Caching
+redis
+
+# Logging
+structlog
+
+# Testing
+pytest
+pytest-asyncio
+httpx

@@ -1,177 +1,158 @@
-# LexiReport Backend
+# FastAPI Backend
 
-The backend service for LexiReport, built with FastAPI and PostgreSQL.
+A modern, secure, and scalable FastAPI backend with user authentication.
 
 ## Features
 
-- 🔐 JWT Authentication
-- 📊 Report Management
-- 🤖 AI-powered Analysis
-- 📝 API Documentation
-- 🔄 Database Migrations
-- 🧪 Comprehensive Testing
+- User authentication with JWT tokens
+- Password hashing with bcrypt
+- SQLAlchemy ORM with PostgreSQL
+- Repository pattern for database operations
+- Service layer for business logic
+- API versioning
+- CORS support
+- Environment-based configuration
+- Comprehensive error handling
+- Type hints and validation with Pydantic
+- Enhanced data validation for user inputs
+- Secure password requirements
+- Email format validation
+- Name format validation
+- Pagination validation
 
-## API Endpoints
+## Prerequisites
 
-### Authentication
-- `POST /api/v1/auth/token` - Get access token
-- `POST /api/v1/auth/register` - Register new user
-- `GET /api/v1/auth/me` - Get current user
-
-### Reports
-- `GET /api/v1/reports/` - List all reports
-- `POST /api/v1/reports/` - Upload new report
-- `GET /api/v1/reports/{id}` - Get report details
-- `GET /api/v1/reports/{id}/insights` - Get report insights
+- Python 3.8+
+- PostgreSQL
+- pip (Python package manager)
 
 ## Setup
 
-### Prerequisites
-- Python 3.9+
-- PostgreSQL
-- Virtual environment
-
-### Installation
-
-1. Create and activate virtual environment:
+1. Clone the repository:
 ```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On Unix/MacOS:
-source venv/bin/activate
+git clone <repository-url>
+cd backend
 ```
 
-2. Install dependencies:
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Set up environment variables:
+4. Create a `.env` file:
 ```bash
-# On Windows:
-copy .env.example .env
-# On Unix/MacOS:
-cp .env.example .env
-
-# Edit .env with your configuration
+cp .env.template .env
 ```
 
-4. Initialize database:
-```bash
-python -m app.db.init_db
+5. Update the `.env` file with your configuration:
+```env
+# API settings
+PROJECT_NAME=FastAPI Backend
+VERSION=0.1.0
+DESCRIPTION=FastAPI backend with user authentication
+
+# CORS settings
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
+
+# JWT settings
+JWT_SECRET_KEY=your-secret-key-here
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Database settings
+POSTGRES_SERVER=localhost
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=app
 ```
 
-5. Run migrations:
+6. Create the database:
+```bash
+createdb app
+```
+
+7. Run migrations:
 ```bash
 alembic upgrade head
-```
-
-### Running the Server
-
-#### Development Mode
-```bash
-# For local development only
-uvicorn app.main:app --reload
-```
-
-#### Production/Network Mode
-```bash
-# For network access (required for mobile app development)
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-#### Network Configuration
-- The `--host 0.0.0.0` flag allows connections from other devices on your network
-- Default port is 8000
-- To access from other devices, use your machine's IP address (e.g., http://192.168.1.100:8000)
-- To find your IP address:
-  - Windows: Run `ipconfig` in command prompt
-  - Unix/MacOS: Run `ifconfig` or `ip addr` in terminal
-
-#### Troubleshooting Network Issues
-1. Ensure the server is running with `--host 0.0.0.0`
-2. Verify your firewall allows connections on port 8000
-3. Check that your frontend is using the correct IP address
-4. Test the connection using:
-   - API documentation: `http://<your-ip>:8000/docs`
-   - Health check: `http://<your-ip>:8000/health`
-
-## Project Structure
-
-```
-backend/
-├── app/
-│   ├── api/
-│   │   ├── v1/
-│   │   │   ├── endpoints/
-│   │   │   └── api.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── security.py
-│   │   │   └── database.py
-│   │   ├── db/
-│   │   │   ├── init_db.py
-│   │   │   └── session.py
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   └── report.py
-│   │   └── main.py
-│   ├── alembic/
-│   │   └── versions/
-│   ├── tests/
-│   ├── .env
-│   ├── .env.example
-│   ├── requirements.txt
-│   └── README.md
 ```
 
 ## Development
 
-### Code Style
-- Follow PEP 8 guidelines
-- Use type hints
-- Write docstrings for functions
+1. Start the development server:
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### Testing
+2. Access the API documentation:
+- Swagger UI: http://localhost:8000/api/v1/docs
+- ReDoc: http://localhost:8000/api/v1/redoc
+
+## API Endpoints
+
+### Authentication
+- `POST /api/v1/auth/register` - Register a new user
+  - Requires valid email format
+  - Password must meet strength requirements
+  - Full name must be properly formatted
+- `POST /api/v1/auth/login` - Login and get access token
+- `POST /api/v1/auth/password-reset-request` - Request password reset
+- `POST /api/v1/auth/password-reset` - Reset password with token
+
+### Users
+- `GET /api/v1/users/me` - Get current user
+- `PUT /api/v1/users/me` - Update current user
+- `GET /api/v1/users` - List users (paginated)
+- `GET /api/v1/users/{user_id}` - Get user by ID
+- `PUT /api/v1/users/{user_id}` - Update user
+- `DELETE /api/v1/users/{user_id}` - Delete user
+
+## Validation Requirements
+
+### Password Requirements
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character
+
+### Email Requirements
+- Valid email format
+- Automatically converted to lowercase
+
+### Name Requirements
+- 2-100 characters
+- Only letters, spaces, hyphens, periods, and apostrophes
+- Cannot be empty
+
+### Pagination Requirements
+- Page number must be greater than 0
+- Page size must be between 1 and 100
+
+## Project Structure
+
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation of the project structure and architectural decisions.
+
+## Testing
+
+Run tests:
 ```bash
 pytest
 ```
 
-### Database Migrations
-```bash
-# Create new migration
-alembic revision --autogenerate -m "description"
-
-# Apply migrations
-alembic upgrade head
-```
-
-## API Documentation
-
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs` or `http://<your-ip>:8000/docs`
-- ReDoc: `http://localhost:8000/redoc` or `http://<your-ip>:8000/redoc`
-
-## Environment Variables
-
-Required environment variables:
-- `DATABASE_URL`: PostgreSQL connection string
-- `SECRET_KEY`: JWT secret key
-- `ALGORITHM`: JWT algorithm
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: Token expiration time
-- `CORS_ORIGINS`: Allowed CORS origins
-
 ## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests
-4. Submit a pull request
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
