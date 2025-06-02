@@ -52,14 +52,8 @@ def init_db() -> None:
         db_path = os.path.abspath("app.db")
         logger.info(f"Database path: {db_path}")
 
-        # Delete existing database file if it exists
-        if os.path.exists(db_path):
-            os.remove(db_path)
-            logger.info(f"Deleted existing database file: {db_path}")
-
-        # Create tables
-        Base.metadata.drop_all(bind=engine)  # Drop all tables first
-        Base.metadata.create_all(bind=engine)  # Create all tables
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
 
         # Verify tables exist

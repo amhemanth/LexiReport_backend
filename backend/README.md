@@ -35,8 +35,14 @@ The backend service for LexiReport, built with FastAPI and PostgreSQL.
 
 1. Create and activate virtual environment:
 ```bash
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Unix/MacOS:
+source venv/bin/activate
 ```
 
 2. Install dependencies:
@@ -46,7 +52,11 @@ pip install -r requirements.txt
 
 3. Set up environment variables:
 ```bash
+# On Windows:
+copy .env.example .env
+# On Unix/MacOS:
 cp .env.example .env
+
 # Edit .env with your configuration
 ```
 
@@ -62,15 +72,33 @@ alembic upgrade head
 
 ### Running the Server
 
-Development:
+#### Development Mode
 ```bash
+# For local development only
 uvicorn app.main:app --reload
 ```
 
-Production:
+#### Production/Network Mode
 ```bash
+# For network access (required for mobile app development)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+#### Network Configuration
+- The `--host 0.0.0.0` flag allows connections from other devices on your network
+- Default port is 8000
+- To access from other devices, use your machine's IP address (e.g., http://192.168.1.100:8000)
+- To find your IP address:
+  - Windows: Run `ipconfig` in command prompt
+  - Unix/MacOS: Run `ifconfig` or `ip addr` in terminal
+
+#### Troubleshooting Network Issues
+1. Ensure the server is running with `--host 0.0.0.0`
+2. Verify your firewall allows connections on port 8000
+3. Check that your frontend is using the correct IP address
+4. Test the connection using:
+   - API documentation: `http://<your-ip>:8000/docs`
+   - Health check: `http://<your-ip>:8000/health`
 
 ## Project Structure
 
@@ -125,8 +153,8 @@ alembic upgrade head
 ## API Documentation
 
 Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- Swagger UI: `http://localhost:8000/docs` or `http://<your-ip>:8000/docs`
+- ReDoc: `http://localhost:8000/redoc` or `http://<your-ip>:8000/redoc`
 
 ## Environment Variables
 
