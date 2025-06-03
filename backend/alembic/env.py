@@ -11,7 +11,8 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config.settings import get_settings
-from app.db.base_class import Base
+from app.db.base import Base  # Import from base.py which has all models
+from app.db.base import *  # Import all models
 from app.models.user import User
 
 # this is the Alembic Config object, which provides

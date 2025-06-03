@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, validator, constr
 from .base import BaseSchema
 from app.core.validators import (
@@ -7,6 +7,7 @@ from app.core.validators import (
     validate_email_format,
     validate_full_name
 )
+from app.models.user import UserRole
 
 class UserBase(BaseModel):
     """Base user schema."""
@@ -42,15 +43,21 @@ class Token(BaseModel):
     """Token schema."""
     access_token: str
     token_type: str
+    role: UserRole
+    permissions: List[str]
 
 class TokenData(BaseModel):
     """Token data schema."""
     email: Optional[str] = None
+    role: Optional[UserRole] = None
+    permissions: Optional[List[str]] = None
 
 class RegistrationResponse(BaseModel):
     """Registration response schema."""
     message: str
     email: str
+    role: UserRole
+    permissions: List[str]
 
 class LoginRequest(BaseModel):
     """Schema for login request."""

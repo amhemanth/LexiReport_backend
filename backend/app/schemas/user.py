@@ -8,12 +8,31 @@ from app.core.validators import (
     validate_full_name,
     validate_pagination_params
 )
+from app.models.user import UserRole
+import uuid
+
+class PasswordUpdate(BaseModel):
+    """Schema for password update."""
+    current_password: str
+    new_password: str
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v):
+        return validate_password_strength(v)
+
+class PermissionUpdate(BaseModel):
+    """Schema for permission update."""
+    permissions: List[str]
+
+class RoleUpdate(BaseModel):
+    """Schema for role update."""
+    role: UserRole
 
 class UserBase(BaseSchema):
     """Base user schema with common attributes."""
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    is_active: Optional[bool] = True
 
     @field_validator('email')
     @classmethod
@@ -35,20 +54,22 @@ class UserCreate(UserBase):
     full_name: str
     password: str
 
-    @field_validator('email')
-    @classmethod
-    def validate_email(cls, v):
-        return validate_email_format(v)
-
-    @field_validator('full_name')
-    @classmethod
-    def validate_full_name(cls, v):
-        return validate_full_name(v)
-
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
         return validate_password_strength(v)
+
+class UserInDB(UserBase):
+    """Schema for user in database."""
+    id: uuid.UUID
+    email: EmailStr
+    full_name: str
+    is_active: bool
+    role: UserRole
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(UserBase):
     """Schema for user updates."""
@@ -61,13 +82,9 @@ class UserUpdate(UserBase):
             return validate_password_strength(v)
         return v
 
-class UserInDB(UserBase, TimestampSchema):
-    """Schema for user data in database."""
-    id: int
-
 class UserResponse(UserInDB):
     """Schema for user response."""
-    id: int
+    id: uuid.UUID
     email: EmailStr
     full_name: str
     is_active: bool

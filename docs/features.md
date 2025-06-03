@@ -141,4 +141,99 @@
 3. Protected routes
 4. Input validation
 5. Error handling
-6. Secure storage of sensitive data 
+6. Secure storage of sensitive data
+
+## User Management
+
+### Role-Based Access Control (RBAC)
+
+The system implements a comprehensive role-based access control system that provides:
+
+1. **User Roles**
+   - Admin users with full system access
+   - Regular users with limited access
+   - Role-based permission inheritance
+
+2. **Permission System**
+   - Granular permission control
+   - Default permissions for new users
+   - Permission management through API
+   - Permission inheritance for admin role
+
+3. **Security Features**
+   - JWT-based authentication
+   - Password hashing with bcrypt
+   - Password update tracking
+   - Session management
+
+4. **Access Control**
+   - Users can only access their own data
+   - Admins can access and manage all data
+   - Permission-based route protection
+   - Role-based access restrictions
+
+5. **User Management**
+   - User registration with default permissions
+   - Role and permission updates
+   - User activation/deactivation
+   - Password management
+
+### API Access Control
+
+1. **Protected Routes**
+   - All routes require authentication
+   - Permission-based access control
+   - Role-based restrictions
+   - Clear error messages for unauthorized access
+
+2. **Permission Management**
+   - Admin can update user permissions
+   - Permission inheritance for admin role
+   - Granular permission control
+   - Permission validation
+
+3. **User Data Access**
+   - Users can only access their own data
+   - Admins can access all user data
+   - Permission-based data access
+   - Clear access restrictions
+
+## Authentication
+
+### User Registration
+- Email and password-based registration
+- Password strength requirements
+- Email validation
+- Duplicate email prevention
+
+### User Login
+- JWT-based authentication
+- Token expiration
+- Secure password verification
+- Session management
+
+### Password Management
+- Secure password hashing
+- Password update functionality
+- Password strength validation
+- Password update tracking
+
+## Security
+
+### Data Protection
+- Encrypted password storage
+- Secure token generation
+- Role-based access control
+- Permission-based restrictions
+
+### API Security
+- JWT authentication
+- Token validation
+- Permission checking
+- Role verification
+
+### Error Handling
+- Clear error messages
+- Proper HTTP status codes
+- Security-focused error responses
+- Detailed validation errors 
