@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.repositories.base import BaseRepository
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from datetime import datetime
 
 class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
     """User repository with user-specific operations."""
@@ -30,12 +31,15 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         *,
         db_obj: User,
         obj_in: UserUpdate,
-        hashed_password: Optional[str] = None
+        hashed_password: Optional[str] = None,
+        password_updated_at: Optional[datetime] = None
     ) -> User:
         """Update a user."""
         update_data = obj_in.dict(exclude_unset=True)
         if hashed_password:
             update_data["hashed_password"] = hashed_password
+        if password_updated_at:
+            update_data["password_updated_at"] = password_updated_at
         return super().update(db, db_obj=db_obj, obj_in=update_data)
 
     def get_active_users(self, db: Session, skip: int = 0, limit: int = 100) -> List[User]:

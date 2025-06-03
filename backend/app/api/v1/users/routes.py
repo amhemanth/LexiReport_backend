@@ -8,6 +8,7 @@ from app.repositories.user import user_repository
 from app.schemas.user import UserResponse, UserUpdate, UserList
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -63,12 +64,16 @@ def update_password(
         # Hash new password
         hashed_password = get_password_hash(password_in.new_password)
         
-        # Update password
+        # Set password_updated_at to now
+        password_updated_at = datetime.now(timezone.utc)
+        
+        # Update password and password_updated_at
         updated_user = user_repository.update(
             db=db,
             db_obj=current_user,
             obj_in=UserUpdate(),
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
+            password_updated_at=password_updated_at
         )
         
         # Verify the update was successful
