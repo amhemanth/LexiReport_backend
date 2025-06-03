@@ -31,6 +31,30 @@ This document describes the database migrations used in the application. Migrati
   - Default Value: true
   - Purpose: Indicates whether a user account is active or deactivated
 
+### 003 - Add created_at and updated_at Columns to Users
+**Date**: 2025-06-03
+**Description**: Adds created_at and updated_at columns to the users table for auditing purposes.
+**Changes**:
+- Adds `created_at` column to `users` table:
+  - Type: DateTime
+  - Not Nullable
+  - Automatically set to current timestamp on insert
+- Adds `updated_at` column to `users` table:
+  - Type: DateTime
+  - Not Nullable
+  - Automatically updated to current timestamp on update
+- For existing users, both columns are set to the current timestamp during migration.
+
+**Migration Steps**:
+- The migration first adds the columns as nullable with a default value of the current timestamp.
+- It then updates all existing rows to have the current timestamp.
+- Finally, it alters the columns to be NOT NULL and removes the default.
+
+**Upgrade Example**:
+```bash
+alembic upgrade head
+```
+
 ## Running Migrations
 
 ### Prerequisites

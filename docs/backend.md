@@ -11,17 +11,9 @@ backend/
 │   ├── api/             # API routes
 │   │   └── auth/        # Authentication endpoints
 │   │   └── user/        # User management endpoints
-│   ├── core/            # Core functionality
-│   │   ├── security.py  # Security utilities
-│   │   └── security_utils.py  # JWT token handling
-│   ├── db/              # Database configuration
-│   │   ├── base.py      # Base model imports
-│   │   ├── base_class.py # SQLAlchemy Base class
-│   │   └── session.py   # Database session management
-│   ├── models/          # Database models
-│   │   └── user.py      # User model
-│   └── main.py          # FastAPI application
-└── .env                 # Environment variables
+│   │   └── models/      # Database models
+│   │   └── main.py      # FastAPI application
+│   └── .env             # Environment variables
 ```
 
 ## Setup
@@ -193,4 +185,26 @@ pytest
 
 ### Logs
 - Check application logs for detailed error messages
-- Enable debug mode for more verbose logging 
+- Enable debug mode for more verbose logging
+
+## User Model Timestamps
+
+The user model now includes two timestamp fields:
+- `created_at`: Automatically set when a user is created
+- `updated_at`: Automatically updated whenever a user record is modified
+
+These fields are managed by SQLAlchemy and require a database migration (see below).
+
+### Migration for Timestamps
+To add these fields to existing databases:
+1. Generate a migration:
+   ```bash
+   alembic revision --autogenerate -m "add timestamp columns to users table"
+   ```
+2. If you have existing users, update the migration file to set the current timestamp for all existing rows (see MIGRATIONS.md for details).
+3. Apply the migration:
+   ```bash
+   alembic upgrade head
+   ```
+
+After this, all users will have `created_at` and `updated_at` fields, and these will be managed automatically. 

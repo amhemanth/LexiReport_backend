@@ -1,7 +1,8 @@
 from sqlalchemy import Boolean, Column, String, Integer
 from app.db.base_class import Base
+from app.models.base import TimestampMixin
 
-class User(Base):
+class User(Base, TimestampMixin):
     """User model."""
     
     __tablename__ = "users"

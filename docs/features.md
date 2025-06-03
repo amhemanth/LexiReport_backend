@@ -85,7 +85,7 @@
   - Full name
   - Email (unique)
   - Hashed password
-  - Timestamps
+  - Timestamps: created_at, updated_at (auto-managed)
 
 ### API Endpoints
 - **Authentication**
