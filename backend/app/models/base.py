@@ -1,4 +1,4 @@
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base, declared_attr
 from sqlalchemy import Column, Integer, DateTime, func
 from datetime import datetime, timezone
 

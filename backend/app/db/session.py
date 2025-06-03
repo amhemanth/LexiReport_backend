@@ -7,7 +7,6 @@ settings = get_settings()
 # Create SQLAlchemy engine with pool settings
 engine = create_engine(
     settings.SQLALCHEMY_DATABASE_URI,
-    pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_timeout=settings.DB_POOL_TIMEOUT,

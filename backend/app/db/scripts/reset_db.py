@@ -1,5 +1,15 @@
+import os
+import sys
+from pathlib import Path
+
+# Add the backend directory to Python path
+backend_dir = str(Path(__file__).parent.parent.parent.parent)
+sys.path.insert(0, backend_dir)
+
 import psycopg2
+from sqlalchemy import create_engine
 from app.config.settings import get_settings
+from app.db.base import create_tables
 
 def reset_database():
     """Reset the database by dropping and recreating it."""
@@ -36,8 +46,14 @@ def reset_database():
             
     except Exception as e:
         print(f"Error: {str(e)}")
+        raise
     finally:
         conn.close()
+
+    # Create tables
+    engine = create_engine(settings.SQLALCHEMY_DATABASE_URI)
+    create_tables(engine)
+    print(f"Tables created in {settings.POSTGRES_DB}")
 
 if __name__ == "__main__":
     reset_database() 

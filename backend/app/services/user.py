@@ -1,18 +1,19 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from app.repositories.user import UserRepository
+from app.repositories.user import UserRepository, user_repository
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.core.exceptions import (
     DatabaseError,
     UserNotFoundError
 )
+import uuid
 
 class UserService:
-    def __init__(self):
-        self.user_repository = UserRepository()
+    def __init__(self, user_repository: UserRepository):
+        self.user_repository = user_repository
 
-    def get_user(self, db: Session, user_id: int) -> Optional[UserResponse]:
+    def get_user(self, db: Session, user_id: uuid.UUID) -> Optional[UserResponse]:
         """Get user by ID."""
         try:
             user = self.user_repository.get(db, id=user_id)
@@ -50,7 +51,7 @@ class UserService:
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error updating user: {str(e)}")
 
-    def delete_user(self, db: Session, *, user_id: int) -> None:
+    def delete_user(self, db: Session, *, user_id: uuid.UUID) -> None:
         """Delete user."""
         try:
             user = self.user_repository.get(db, id=user_id)
@@ -61,4 +62,4 @@ class UserService:
             raise DatabaseError(f"Error deleting user: {str(e)}")
 
 # Create a singleton instance
-user_service = UserService() 
+user_service = UserService(user_repository) 

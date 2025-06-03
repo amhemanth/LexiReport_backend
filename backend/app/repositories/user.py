@@ -118,14 +118,14 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
             Password.is_current == True
         ).first()
 
-    async def update_user(self, db: Session, user_id: int, user_data: dict) -> Optional[User]:
+    async def update_user(self, db: Session, user_id: uuid.UUID, user_data: dict) -> Optional[User]:
         """Update user data."""
         user = await self.get(db, user_id)
         if user:
             return await self.update(db, user, user_data)
         return None
 
-    async def delete_user(self, db: Session, user_id: int) -> bool:
+    async def delete_user(self, db: Session, user_id: uuid.UUID) -> bool:
         """Delete user."""
         user = await self.get(db, user_id)
         if user:
@@ -133,5 +133,6 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
             return True
         return False
 
-# Create a singleton instance
+# Singleton instance for use in services
+from app.models.user import User
 user_repository = UserRepository(User) 

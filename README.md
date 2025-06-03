@@ -100,16 +100,18 @@ lexireport/
 
 ## Testing
 
-### Backend Tests
-```bash
-cd backend
-pytest
-```
+For detailed information about running tests, test configuration, and best practices, please refer to the [Testing Documentation](docs/testing.md).
 
-### Frontend Tests
+Quick start:
 ```bash
-cd frontend
-npm test
+# Navigate to backend directory
+cd backend
+
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=app tests/
 ```
 
 ## Deployment

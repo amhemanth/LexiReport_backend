@@ -22,7 +22,7 @@ import uuid
 settings = get_settings()
 
 class AuthService:
-    def __init__(self):
+    def __init__(self, user_repository):
         self.user_repository = user_repository
 
     @staticmethod
@@ -55,14 +55,14 @@ class AuthService:
         """Register a new user."""
         try:
             # Check if user exists
-            if user_repository.get_by_email(db, email=user_in.email):
+            if self.user_repository.get_by_email(db, email=user_in.email):
                 raise UserAlreadyExistsError("Email already registered")
             
             # Hash password
             hashed_password = get_password_hash(user_in.password)
             
             # Create user with default role
-            user = user_repository.create(
+            user = self.user_repository.create(
                 db=db,
                 obj_in=user_in,
                 hashed_password=hashed_password,
@@ -94,12 +94,12 @@ class AuthService:
         """Authenticate user and return token."""
         try:
             # Get user
-            user = user_repository.get_by_email(db, email=user_in.email)
+            user = self.user_repository.get_by_email(db, email=user_in.email)
             if not user:
                 raise InvalidCredentialsError()
             
             # Get current password
-            current_password = user_repository.get_current_password(db, user.id)
+            current_password = self.user_repository.get_current_password(db, user.id)
             if not current_password:
                 raise InvalidCredentialsError()
             
@@ -129,7 +129,4 @@ class AuthService:
                 permissions=user.get_permissions()
             )
         except SQLAlchemyError as e:
-            raise DatabaseError(f"Error during user login: {str(e)}")
-
-# Create a singleton instance
-auth_service = AuthService() 
+            raise DatabaseError(f"Error during user login: {str(e)}") 

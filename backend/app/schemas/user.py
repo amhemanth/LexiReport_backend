@@ -88,6 +88,7 @@ class UserResponse(UserInDB):
     email: EmailStr
     full_name: str
     is_active: bool
+    permissions: List[str]
 
     model_config = ConfigDict(from_attributes=True)
 

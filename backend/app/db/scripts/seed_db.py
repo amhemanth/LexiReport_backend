@@ -8,7 +8,7 @@ from app.models.user import User, UserRole
 from app.models.password import Password
 from app.models.permission import Permission
 from app.models.user_permission import UserPermission
-import bcrypt
+from app.core.security import get_password_hash
 
 # Default permissions
 PERMISSIONS = [
@@ -31,8 +31,8 @@ def get_db_session():
     return SessionLocal()
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    """Hash a password using passlib."""
+    return get_password_hash(password)
 
 def seed_permissions(session) -> list:
     """Seed default permissions and return the permission objects."""

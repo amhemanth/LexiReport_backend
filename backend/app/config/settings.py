@@ -1,6 +1,6 @@
 from typing import List, Union
 from pydantic_settings import BaseSettings
-from pydantic import validator, AnyHttpUrl
+from pydantic import field_validator, AnyHttpUrl, ConfigDict
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
     
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
     def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
@@ -54,11 +55,12 @@ class Settings(BaseSettings):
         """Get database URI."""
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        env_prefix = ""  # No prefix for environment variables
+    model_config = ConfigDict(
+        case_sensitive=True,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix=""
+    )
 
 def get_settings() -> Settings:
     """Get application settings."""

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, validator, constr
+from pydantic import BaseModel, EmailStr, Field, field_validator, constr
 from .base import BaseSchema
 from app.core.validators import (
     validate_password_strength,
@@ -14,11 +14,13 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         return validate_email_format(v)
 
-    @validator('full_name')
+    @field_validator('full_name')
+    @classmethod
     def validate_full_name(cls, v):
         return validate_full_name(v)
 
@@ -26,7 +28,8 @@ class UserCreate(UserBase):
     """User creation schema."""
     password: constr(min_length=8, max_length=100)
 
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         return validate_password_strength(v)
 
@@ -35,7 +38,8 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         return validate_email_format(v)
 
@@ -64,7 +68,8 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: constr(min_length=8, max_length=100)
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         return validate_email_format(v)
 
@@ -72,7 +77,8 @@ class PasswordResetRequest(BaseModel):
     """Schema for password reset request."""
     email: EmailStr
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         return validate_email_format(v)
 
@@ -81,6 +87,7 @@ class PasswordReset(BaseModel):
     token: str
     new_password: constr(min_length=8, max_length=100)
 
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_password(cls, v):
         return validate_password_strength(v) 

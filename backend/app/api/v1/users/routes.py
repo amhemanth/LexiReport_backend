@@ -6,7 +6,8 @@ from app.core.security import verify_password, get_password_hash
 from app.core.permissions import Permission, require_permission, require_admin
 from app.models.user import User, UserRole
 from app.models.enums import UserRole
-from app.repositories.user import user_repository
+from app.repositories.user import UserRepository
+from app.services.user import UserService
 from app.schemas.user import (
     UserResponse, UserUpdate, UserList, PasswordUpdate,
     PermissionUpdate, RoleUpdate
@@ -33,6 +34,9 @@ class RoleUpdate(BaseModel):
 
 router = APIRouter()
 
+user_repository = UserRepository(User)
+user_service = UserService(user_repository)
+
 @router.get("/me", response_model=UserResponse)
 @require_permission(Permission.API_ACCESS)
 async def read_user_me(
@@ -41,7 +45,9 @@ async def read_user_me(
     db: Session = Depends(get_db)
 ):
     """Get current user's data."""
-    return current_user
+    user_dict = current_user.__dict__.copy()
+    user_dict["permissions"] = current_user.get_permissions()
+    return user_dict
 
 @router.get("/{user_id}", response_model=UserResponse)
 @require_permission(Permission.READ_USERS)
@@ -64,7 +70,9 @@ async def read_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return user
+    user_dict = user.__dict__.copy()
+    user_dict["permissions"] = user.get_permissions()
+    return user_dict
 
 @router.put("/me", response_model=UserResponse)
 @require_permission(Permission.API_ACCESS)
@@ -72,10 +80,11 @@ async def update_user_me(
     *,
     user_in: UserUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_service: UserService = Depends(lambda: user_service)
 ):
     """Update current user's data."""
-    user = user_repository.update(db, db_obj=current_user, obj_in=user_in)
+    user = user_service.update_user(db, db_obj=current_user, obj_in=user_in)
     return user
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -85,7 +94,8 @@ async def update_user(
     user_id: uuid.UUID,
     user_in: UserUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_service: UserService = Depends(lambda: user_service)
 ):
     """Update user. Only allows users to update their own data or admins to update any data."""
     if current_user.id != user_id and current_user.role != UserRole.ADMIN:
@@ -93,15 +103,13 @@ async def update_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this user's data"
         )
-    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
-    user = user_repository.update(db, db_obj=user, obj_in=user_in)
+    user = user_service.update_user(db, db_obj=user, obj_in=user_in)
     return user
 
 @router.put("/me/password", response_model=UserResponse)
