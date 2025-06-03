@@ -2,11 +2,18 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_active_user
+from app.core.security import verify_password, get_password_hash
 from app.models.user import User
 from app.repositories.user import user_repository
 from app.schemas.user import UserResponse, UserUpdate, UserList
+from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 router = APIRouter()
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
 
 @router.get("/me", response_model=UserResponse)
 def read_user_me(
@@ -29,6 +36,61 @@ def update_user_me(
         obj_in=user_in
     )
     return user
+
+@router.put("/me/password")
+def update_password(
+    *,
+    db: Session = Depends(get_db),
+    password_in: PasswordUpdate,
+    current_user: User = Depends(get_current_active_user)
+) -> dict:
+    """Update current user's password."""
+    try:
+        # Verify current password
+        if not verify_password(password_in.current_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Check if new password is same as current password
+        if verify_password(password_in.new_password, current_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password must be different from current password"
+            )
+        
+        # Hash new password
+        hashed_password = get_password_hash(password_in.new_password)
+        
+        # Update password
+        updated_user = user_repository.update(
+            db=db,
+            db_obj=current_user,
+            obj_in=UserUpdate(),
+            hashed_password=hashed_password
+        )
+        
+        # Verify the update was successful
+        if not updated_user or not verify_password(password_in.new_password, updated_user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password. Please try again."
+            )
+        
+        return {"message": "Password updated successfully"}
+        
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred while updating password"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def read_user(
