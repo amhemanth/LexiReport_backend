@@ -121,7 +121,8 @@ async def update_password(
     db: Session = Depends(get_db)
 ):
     """Update current user's password."""
-    if not verify_password(password_update.current_password, current_user.hashed_password):
+    current_password_obj = user_repository.get_current_password(db, current_user.id)
+    if not current_password_obj or not verify_password(password_update.current_password, current_password_obj.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect password"
@@ -135,7 +136,10 @@ async def update_password(
         hashed_password=hashed_password,
         password_updated_at=datetime.now(timezone.utc)
     )
-    return user
+    # Add permissions to the response
+    user_dict = user.__dict__.copy()
+    user_dict["permissions"] = user.get_permissions()
+    return user_dict
 
 @router.get("/", response_model=UserList)
 @require_permission(Permission.READ_USERS)

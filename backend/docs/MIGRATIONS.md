@@ -6,7 +6,7 @@ This document describes the database migrations used in the application. Migrati
 ## Migration History
 
 ### 001 - Initial Migration
-**Date**: 2024-03-19
+**Date**: 2025-06-03
 **Description**: Creates the initial database schema with the users table.
 **Changes**:
 - Creates `users` table with columns:
