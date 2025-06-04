@@ -9,191 +9,60 @@ LexiReport is built using a modern, scalable architecture that separates concern
 │   Frontend  │     │   Backend   │     │  Database   │
 │  (Expo/RN)  │◄────┤  (FastAPI)  │◄────┤ (PostgreSQL)│
 └─────────────┘     └─────────────┘     └─────────────┘
-       ▲                   ▲                   ▲
-       │                   │                   │
-       ▼                   ▼                   ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    State    │     │     AI      │     │   Storage   │
-│ Management  │     │  Services   │     │   Service   │
-└─────────────┘     └─────────────┘     └─────────────┘
 ```
 
 ## Frontend Architecture
 
-### Technology Stack
-- React Native with Expo
-- TypeScript for type safety
-- Zustand for state management
-- Expo Router for navigation
-- Axios for API communication
-
-### Key Components
-1. **Navigation**
-   - Tab-based navigation
-   - Stack navigation for screens
-   - Deep linking support
-
-2. **State Management**
-   - Zustand stores
-   - API integration
-   - Error handling
-   - Loading states
-
-3. **UI Components**
-   - Themed components
-   - Reusable layouts
-   - Form components
-   - Loading states
-
-4. **Authentication**
-   - JWT token management
-   - Secure storage
-   - Session handling
+- **React Native (Expo) + TypeScript**
+- **State Management:** Zustand
+- **Navigation:** Expo Router
+- **API Communication:** Axios
+- **Authentication:** JWT token management, secure storage
+- **UI:** Themed, reusable components, dark/light mode
 
 ## Backend Architecture
 
-### Technology Stack
-- FastAPI for API framework
-- SQLAlchemy for ORM
-- PostgreSQL for database
-- JWT for authentication
-- Alembic for migrations
-
-### Key Components
-1. **API Layer**
-   - RESTful endpoints
-   - Request validation
-   - Response serialization
-   - Error handling
-
-2. **Service Layer**
-   - Business logic
-   - AI integration
-   - File processing
-   - Data analysis
-
-3. **Data Layer**
-   - Database models
-   - Migrations
-   - Query optimization
-   - Caching
-
-4. **Security**
-   - JWT authentication
-   - Role-based access
-   - Input validation
-   - Rate limiting
+- **API Framework:** FastAPI (Python)
+- **ORM:** SQLAlchemy
+- **Database:** PostgreSQL
+- **Authentication:** JWT
+- **Migrations:** Alembic
+- **Business Logic:** Service and repository layers
+- **Security:** Role-based access, input validation, CORS
 
 ## Database Design
 
-### Core Tables
-1. **Users**
-   - Authentication
-   - Profile data
-   - Preferences
-
-2. **Reports**
-   - Document metadata
-   - Analysis results
-   - User associations
-
-3. **Insights**
-   - Generated insights
-   - Analysis data
-   - Report associations
+- **Users:** Authentication, profile, preferences
+- **Reports:** Document metadata, analysis results
+- **Insights:** AI-generated insights, analysis data
 
 ## AI Integration
 
-### Components
-1. **Document Analysis**
-   - Text extraction
-   - Entity recognition
-   - Sentiment analysis
-
-2. **Insight Generation**
-   - Key points extraction
-   - Summary generation
-   - Trend analysis
-
-3. **Machine Learning**
-   - Document classification
-   - Anomaly detection
-   - Pattern recognition
+- **Document Analysis:** Text extraction, entity recognition, sentiment analysis
+- **Insight Generation:** Key points, summaries, trend analysis
 
 ## Security Architecture
 
-### Authentication
-- JWT-based authentication
-- Token refresh mechanism
-- Secure storage
-- Session management
-
-### Authorization
-- Role-based access control
-- Resource-level permissions
-- API key management
-
-### Data Protection
-- Input validation
-- Output sanitization
-- SQL injection prevention
-- XSS protection
+- **Authentication:** JWT-based, token refresh, secure storage
+- **Authorization:** Role-based access control, resource-level permissions
+- **Data Protection:** Input validation, output sanitization, SQL injection/XSS prevention
 
 ## Deployment Architecture
 
-### Frontend
-- Expo build system
-- App store deployment
-- OTA updates
-- Environment configuration
-
-### Backend
-- Docker containerization
-- Load balancing
-- Auto-scaling
-- Monitoring
+- **Frontend:** Expo build, app store/web deployment, OTA updates
+- **Backend:** Docker containerization, load balancing, auto-scaling, monitoring
 
 ## Performance Considerations
 
-### Frontend
-- Lazy loading
-- Image optimization
-- State caching
-- Network optimization
-
-### Backend
-- Query optimization
-- Response caching
-- Connection pooling
-- Async processing
+- **Frontend:** Lazy loading, image optimization, state caching
+- **Backend:** Query optimization, response caching, async processing
 
 ## Monitoring and Logging
 
-### Frontend
-- Error tracking
-- Performance metrics
-- User analytics
-- Crash reporting
-
-### Backend
-- Request logging
-- Error tracking
-- Performance monitoring
-- Resource usage
+- **Frontend:** Error tracking, performance metrics, analytics
+- **Backend:** Request logging, error tracking, performance monitoring
 
 ## Future Considerations
 
-1. **Scalability**
-   - Microservices architecture
-   - Message queues
-   - Distributed caching
-
-2. **Integration**
-   - Third-party services
-   - API ecosystem
-   - Webhooks
-
-3. **Platform Expansion**
-   - Web platform
-   - Desktop applications
-   - Browser extensions 
+- Microservices, message queues, distributed caching
+- Third-party integrations, webhooks, platform expansion 

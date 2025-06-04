@@ -3,231 +3,97 @@
 ## Frontend Features
 
 ### Authentication
-- **Login Screen**
+- **Login & Registration**
   - Email and password authentication
+  - Password strength validation
   - Show/hide password toggle
-  - Loading state with activity indicator
-  - Error handling with user-friendly messages
-  - Keyboard avoiding behavior for better mobile UX
-  - Link to registration screen
-  - Modern UI with icons and proper spacing
-
-- **Registration Screen**
-  - Full name, email, and password fields
-  - Password confirmation with matching validation
-  - Show/hide password toggles for both password fields
-  - Loading state with activity indicator
-  - Error handling with user-friendly messages
-  - Keyboard avoiding behavior
-  - Link to login screen
-  - Modern UI with icons and proper spacing
+  - Loading and error states
+  - Keyboard avoiding for mobile
+  - Modern UI with icons
 
 ### Report Management
-- **Report List View**
-  - Grid/List view toggle
-  - Search and filter functionality
-  - Sort by date, name, or status
-  - Pull-to-refresh
-  - Infinite scroll
-  - Loading states
-  - Error handling
-
-- **Report Detail View**
-  - Report metadata display
-  - Document preview
+- **Report List & Detail**
+  - List, search, filter, and sort reports
+  - Pull-to-refresh and infinite scroll
+  - Report metadata and document preview
   - AI-generated insights
-  - Share functionality
-  - Download option
-  - Loading states
-  - Error handling
+  - Share and download options
 
 - **Report Upload**
-  - Drag and drop support
-  - File type validation
-  - Upload progress indicator
-  - Error handling
-  - Success feedback
-  - File size limits
+  - File type and size validation
+  - Upload progress and feedback
 
-### Profile Screen
-- **User Information Display**
-  - Profile avatar with user's initial
-  - Display user's full name
-  - Display user's email
-  - Clean and modern layout
+### Profile & Account
+- **User Info**
+  - Avatar, name, email display
+  - Edit profile (UI ready)
+  - Change password (UI ready)
+  - Logout and support options
 
-- **Account Management**
-  - Edit Profile section (UI ready, functionality pending)
-  - Settings section (UI ready, functionality pending)
-  - Change Password option (UI ready, functionality pending)
-
-- **Support Section**
-  - Help & Support option (UI ready, functionality pending)
-
-- **Logout Functionality**
-  - Secure logout with proper error handling
-  - Automatic redirection to login screen
-
-### UI/UX Features
+### UI/UX
 - **Theme Support**
-  - Dark/Light mode support
-  - Consistent color scheme
-  - Proper contrast for accessibility
-  - Smooth transitions
-
+  - Dark/Light mode
 - **Navigation**
-  - Tab-based navigation
-  - Proper routing between auth and main screens
-  - Back navigation support
-
+  - Tab and stack navigation
 - **Form Handling**
-  - Input validation
-  - Loading states
-  - Error messages
-  - Keyboard handling
-  - Proper focus management
+  - Input validation, error messages, keyboard handling
 
 ## Backend Features
 
-### Authentication
-- **User Registration**
-  - Email validation
-  - Password hashing
-  - Duplicate email check
-  - JWT token generation
-
-- **User Login**
-  - Email/password validation
-  - JWT token generation
-  - Session management
-  - Rate limiting
-
-- **User Profile**
-  - Profile data retrieval
-  - Profile update functionality
-  - Password change support
-  - Account deletion
+### Authentication & User Management
+- **User Registration & Login**
+  - Email validation, password hashing (bcrypt)
+  - JWT token generation and validation
+- **Profile Management**
+  - Get/update profile, change password
+  - Role and permission management (RBAC)
 
 ### Report Management
-- **Report Storage**
-  - Secure file upload
-  - File type validation
-  - Size limits
-  - Storage optimization
-
-- **Report Processing**
-  - Document parsing
-  - Text extraction
-  - Metadata generation
-  - AI analysis integration
-
-- **Report Retrieval**
-  - List reports with pagination
-  - Search functionality
-  - Filter by type/date
-  - Sort options
+- **Storage & Processing**
+  - Secure file upload, type/size validation
+  - Document parsing, text extraction, metadata
+  - AI-powered analysis and insights
+- **Retrieval**
+  - List/search/filter/sort reports (pagination)
 
 ### AI Integration
 - **Document Analysis**
-  - Text extraction
-  - Key insights generation
-  - Summary creation
-  - Entity recognition
+  - Text extraction, key insights, summaries
+  - Entity recognition, sentiment analysis
 
-- **Natural Language Processing**
-  - Sentiment analysis
-  - Topic modeling
-  - Keyword extraction
-  - Document classification
-
-### Security Features
-- **Authentication**
-  - JWT token validation
-  - Token refresh mechanism
-  - Secure password storage
-  - Rate limiting
-
-- **Data Protection**
-  - Input validation
-  - XSS prevention
-  - CSRF protection
-  - SQL injection prevention
-
-- **Error Handling**
-  - Clear error messages
-  - Proper HTTP status codes
-  - Security-focused error responses
-  - Detailed validation errors
+### Security
+- JWT validation, password hashing
+- Input validation, error handling
+- Role-based access control
 
 ## Pending Features
-1. Edit Profile functionality
-2. Change Password functionality
-3. Settings management
-4. Help & Support system
-5. Email verification
-6. Password reset functionality
-7. Social authentication
-8. Profile picture upload
-9. User preferences
-10. Activity logging
+- Edit Profile (backend)
+- Change Password (backend)
+- Settings management
+- Help & Support system
+- Email verification
+- Password reset
+- Social authentication
+- Profile picture upload
+- User preferences
+- Activity logging
 
 ## Technical Stack
-- **Frontend**
-  - React Native
-  - Expo Router
-  - React Navigation
-  - AsyncStorage for token management
-  - Axios for API calls
-
-- **Backend**
-  - Node.js
-  - Express.js
-  - MongoDB
-  - JWT for authentication
-  - Bcrypt for password hashing
+- **Frontend:** React Native, Expo, Zustand, Expo Router, Axios
+- **Backend:** FastAPI, SQLAlchemy, PostgreSQL, JWT, Alembic
 
 ## Security Measures
-1. Password hashing
-2. JWT token authentication
-3. Protected routes
-4. Input validation
-5. Error handling
-6. Secure storage of sensitive data
+- Password hashing (bcrypt)
+- JWT authentication
+- Protected routes
+- Input validation
+- Secure storage of sensitive data
 
 ## User Management
 
 ### Role-Based Access Control (RBAC)
-
-The system implements a comprehensive role-based access control system that provides:
-
-1. **User Roles**
-   - Admin users with full system access
-   - Regular users with limited access
-   - Role-based permission inheritance
-
-2. **Permission System**
-   - Granular permission control
-   - Default permissions for new users
-   - Permission management through API
-   - Permission inheritance for admin role
-
-3. **Security Features**
-   - JWT-based authentication
-   - Password hashing with bcrypt
-   - Password update tracking
-   - Session management
-
-4. **Access Control**
-   - Users can only access their own data
-   - Admins can access and manage all data
-   - Permission-based route protection
-   - Role-based access restrictions
-
-5. **User Management**
-   - User registration with default permissions
-   - Role and permission updates
-   - User activation/deactivation
-   - Password management
+- Permissions: `api_access`, `read_users`, `write_users`, `manage_users`
+- Roles: `admin` (full access), `user` (limited access)
 
 ### API Access Control
 

@@ -1,60 +1,60 @@
 # LexiReport
 
-LexiReport is an AI-powered document analysis application that helps users analyze and extract insights from their reports.
+LexiReport is an AI-powered document analysis application with a modern mobile-first frontend and a robust, secure backend.
 
 ## Features
 
-- 📱 Modern mobile-first design
+- 📱 Cross-platform mobile and web app (React Native + Expo)
 - 🌓 Dark mode support
-- 🔐 Secure authentication
-- 📊 Report analysis and insights
-- 📤 Easy report upload
-- 📱 Cross-platform support (iOS, Android, Web)
+- 🔐 Secure authentication (JWT)
+- 📊 AI-powered report analysis and insights
+- 📤 Easy report upload and management
+- 🗂️ User profile and account management
 
 ## Tech Stack
 
 ### Frontend
-- React Native
-- Expo
+- React Native (Expo)
 - TypeScript
 - Zustand (State Management)
-- React Navigation
-- Axios
+- Expo Router (Navigation)
+- Axios (API communication)
 
 ### Backend
-- FastAPI
-- SQLAlchemy
+- FastAPI (Python 3.8+)
+- SQLAlchemy ORM
 - PostgreSQL
 - JWT Authentication
-- Python 3.9+
+- Alembic (Migrations)
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 16+
-- Python 3.9+
+- Python 3.8+
 - PostgreSQL
 - Expo CLI
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/lexireport.git
-cd lexireport
+git clone <repository-url>
+cd <project-root>
 ```
 
-2. Set up the backend:
+2. **Set up the backend:**
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python -m app.db.init_db
+cp .env.template .env  # Update .env with your settings
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-3. Set up the frontend:
+3. **Set up the frontend:**
 ```bash
 cd frontend
 npm install
@@ -64,68 +64,40 @@ npx expo start
 ## Project Structure
 
 ```
-lexireport/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── models/
-│   │   └── main.py
-│   ├── requirements.txt
-│   └── README.md
-├── frontend/
-│   ├── app/
-│   │   ├── (app)/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   └── lib/
-│   ├── assets/
-│   └── README.md
-└── README.md
+.
+├── backend/    # FastAPI backend
+├── frontend/   # React Native frontend
+└── docs/       # Documentation
 ```
+
+- See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed architecture overview.
+- See [docs/features.md](docs/features.md) for a full feature list.
 
 ## Development
 
-### Backend Development
-- API documentation available at `/docs` when running the server
-- Database migrations handled through Alembic
-- Environment variables in `.env` file
-
-### Frontend Development
-- Expo development server
-- Hot reloading enabled
-- TypeScript for type safety
-- Component-based architecture
+- **Backend:**
+  - API docs at `/api/v1/docs` (Swagger UI)
+  - Environment variables in `.env`
+  - Database migrations via Alembic
+- **Frontend:**
+  - Expo development server
+  - Hot reloading
+  - TypeScript and component-based architecture
 
 ## Testing
 
-For detailed information about running tests, test configuration, and best practices, please refer to the [Testing Documentation](docs/testing.md).
-
-Quick start:
-```bash
-# Navigate to backend directory
-cd backend
-
-# Run all tests
-pytest
-
-# Run tests with coverage
-pytest --cov=app tests/
-```
+- **Backend:**
+  - Run tests with `pytest` in the `backend` directory
+  - See [docs/testing.md](docs/testing.md) for details
+- **Frontend:**
+  - Run `npm test` in the `frontend` directory
 
 ## Deployment
 
-### Backend Deployment
-1. Set up PostgreSQL database
-2. Configure environment variables
-3. Run migrations
-4. Deploy with uvicorn/gunicorn
-
-### Frontend Deployment
-1. Build with Expo
-2. Deploy to app stores
-3. Configure environment variables
+- **Backend:**
+  - Set up PostgreSQL, configure environment, run migrations, deploy with Uvicorn/Gunicorn
+- **Frontend:**
+  - Build with Expo, deploy to app stores or web
 
 ## Contributing
 
@@ -137,7 +109,7 @@ pytest --cov=app tests/
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License. See the LICENSE file for details.
 
 ## Support
 
@@ -147,7 +119,7 @@ For support, email support@lexireport.com or open an issue in the repository.
 ```
 .
 ├── backend/             # FastAPI backend
-├── frontend/           # React frontend
+├── frontend/           # React Native frontend
 └── docs/              # Documentation
 ```
 
