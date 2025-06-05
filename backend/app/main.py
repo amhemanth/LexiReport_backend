@@ -5,16 +5,22 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.api.v1.api import api_router
 from app.config.settings import get_settings
+from app.core.handlers import (
+    validation_exception_handler,
+    general_exception_handler,
+    lexireport_exception_handler,
+    base_validation_handler,
+    base_auth_handler,
+    base_permission_handler,
+    base_not_found_handler
+)
+from app.core.middleware import setup_middleware
 from app.core.exceptions import (
     LexiReportException,
     ValidationException,
     AuthenticationException,
     PermissionException,
-    NotFoundException,
-    validation_exception_handler,
-    authentication_exception_handler,
-    permission_exception_handler,
-    not_found_exception_handler
+    NotFoundException
 )
 
 settings = get_settings()
@@ -37,6 +43,9 @@ app = FastAPI(
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# Set up middleware
+setup_middleware(app)
+
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -47,10 +56,13 @@ app.add_middleware(
 )
 
 # Add exception handlers
-app.add_exception_handler(ValidationException, validation_exception_handler)
-app.add_exception_handler(AuthenticationException, authentication_exception_handler)
-app.add_exception_handler(PermissionException, permission_exception_handler)
-app.add_exception_handler(NotFoundException, not_found_exception_handler)
+app.add_exception_handler(ValidationException, base_validation_handler)
+app.add_exception_handler(AuthenticationException, base_auth_handler)
+app.add_exception_handler(PermissionException, base_permission_handler)
+app.add_exception_handler(NotFoundException, base_not_found_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+app.add_exception_handler(LexiReportException, lexireport_exception_handler)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -65,23 +77,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={"detail": errors}
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions."""
-    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
-
-@app.exception_handler(LexiReportException)
-async def lexireport_exception_handler(request: Request, exc: LexiReportException):
-    """Handle LexiReport exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": str(exc.detail) if isinstance(exc.detail, (ValueError, str)) else exc.detail}
     )
 
 @app.get("/")

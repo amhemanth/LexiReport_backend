@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.config.settings import get_settings
 from app.db.base import Base  # Import from base.py which has all models
 from app.db.base import *  # Import all models
-from app.models.user import User
+from app.models import *  # Import all models from models package
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -24,7 +24,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Get database URL from settings
+# Get settings from our application
 settings = get_settings()
 
 def create_database_if_not_exists():
@@ -61,12 +61,15 @@ def create_database_if_not_exists():
 # Create database if it doesn't exist
 create_database_if_not_exists()
 
-# Set the database URL for Alembic
-config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+# Set the database URL in the alembic.ini file
+config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 target_metadata = Base.metadata
+
+def get_url():
+    return settings.SQLALCHEMY_DATABASE_URI
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -106,7 +109,12 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,  # Compare column types
+            compare_server_default=True,  # Compare server defaults
+            include_schemas=True,  # Include all schemas
+            include_object=lambda obj, name, type_, reflected, compare_to: True  # Include all objects
         )
 
         with context.begin_transaction():

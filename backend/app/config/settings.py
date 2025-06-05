@@ -1,67 +1,68 @@
-from typing import List, Union
+from typing import Any, Dict, List, Optional, Union
+from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, validator
 from pydantic_settings import BaseSettings
-from pydantic import field_validator, AnyHttpUrl, ConfigDict
 
 class Settings(BaseSettings):
-    """Application settings."""
-    # API
+    # API Settings
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str
-    VERSION: str
-    DESCRIPTION: str
-    
-    # CORS
+    VERSION: str = "1.0.0"
+    DESCRIPTION: str = "LexiReport Backend API"
+
+    # CORS Configuration
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
+
+    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
-    
-    # JWT
+
+    # JWT Settings
+    SECRET_KEY: str
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
-    # PostgreSQL
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+
+    # PostgreSQL Database
     POSTGRES_SERVER: str
+    POSTGRES_PORT: int = 5432
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
-    POSTGRES_PORT: str
-    DB_ECHO: bool = False
-    
+    SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+
+    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
+    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+        if isinstance(v, str):
+            return v
+        return PostgresDsn.build(
+            scheme="postgresql",
+            username=values.get("POSTGRES_USER"),
+            password=values.get("POSTGRES_PASSWORD"),
+            host=values.get("POSTGRES_SERVER"),
+            port=values.get("POSTGRES_PORT"),
+            path=values.get("POSTGRES_DB") or "",  # Remove the leading slash
+        )
+
     # Redis Settings
     REDIS_HOST: str
-    REDIS_PORT: str
-    REDIS_DB: str
-    REDIS_PASSWORD: str
-    REDIS_SSL: bool
-    REDIS_TIMEOUT: int
-    REDIS_RETRY_ON_TIMEOUT: bool
-    
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_DB: int = 0
+
     # Database Pool Settings
-    DB_POOL_SIZE: int
-    DB_MAX_OVERFLOW: int
-    DB_POOL_TIMEOUT: int
-    DB_POOL_RECYCLE: int
-    
-    @property
-    def SQLALCHEMY_DATABASE_URI(self) -> str:
-        """Get database URI."""
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-    
-    model_config = ConfigDict(
-        case_sensitive=True,
-        env_file=".env",
-        env_file_encoding="utf-8",
-        env_prefix=""
-    )
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
+
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
+        extra = "allow"  # Allow extra fields in the settings
 
 def get_settings() -> Settings:
-    """Get application settings."""
     return Settings() 

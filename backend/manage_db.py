@@ -2,6 +2,29 @@
 import argparse
 from app.db.scripts.reset_db import reset_database
 from app.db.scripts.seed_db import seed
+import os
+import sys
+from pathlib import Path
+
+# Add the parent directory to Python path
+sys.path.append(str(Path(__file__).parent))
+
+from sqlalchemy import create_engine, text
+from sqlalchemy_utils import database_exists, create_database
+from app.config.config import settings
+from app.db.base_class import Base
+from app.db.session import engine
+
+def init_database():
+    """Initialize the database."""
+    # Create database if it doesn't exist
+    if not database_exists(settings.SQLALCHEMY_DATABASE_URI):
+        create_database(settings.SQLALCHEMY_DATABASE_URI)
+        print("Database created successfully.")
+    
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+    print("Tables created successfully.")
 
 def main():
     parser = argparse.ArgumentParser(description='Database management commands')
@@ -19,4 +42,5 @@ def main():
         seed()
 
 if __name__ == '__main__':
+    init_database()
     main() 

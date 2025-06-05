@@ -46,17 +46,13 @@
   - List reports
   - Upload report
   - Get report details
-  - Get report insights
 - ✅ Database migrations
 - ✅ API documentation
 - ✅ Environment configuration
-- ✅ AI integration
-  - Report analysis
-  - Insight generation
-- ✅ File storage
+- ✅ Basic file storage
   - Document upload
   - File management
-- ✅ Testing
+- ✅ Testing setup
   - Unit tests
   - Integration tests
   - API tests
@@ -84,10 +80,10 @@
   - High contrast mode
 
 ### Backend
-- 🔄 Advanced AI features
-  - Natural language processing
-  - Document classification
-  - Entity extraction
+- 🔄 AI Integration (Phase 1)
+  - Text extraction setup
+  - Basic summarization
+  - Initial TTS integration
 - 🔄 Analytics
   - Usage tracking
   - Performance metrics
@@ -101,6 +97,41 @@
   - Query optimization
   - Response compression
 
+## Next Steps (Prioritized)
+
+### Phase 1: Core AI Features (2-3 weeks)
+1. Implement text extraction system
+   - PDF processing
+   - Word document processing
+   - Excel file processing
+
+2. Set up text summarization
+   - Integrate BART model
+   - Implement summarization pipeline
+   - Add caching for performance
+
+3. Add text-to-speech conversion
+   - Integrate Coqui TTS
+   - Implement voice generation
+   - Add voice caching
+
+4. Create basic voice command system
+   - Set up Whisper model
+   - Implement command recognition
+   - Add basic command processing
+
+### Phase 2: Advanced Features (3-4 weeks)
+1. Implement document classification
+2. Add entity extraction
+3. Set up question-answering system
+4. Enhance voice command processing
+
+### Phase 3: Integration & Optimization (2-3 weeks)
+1. Integrate all AI components
+2. Optimize performance
+3. Add caching and batch processing
+4. Implement error handling and fallbacks
+
 ## Known Issues
 1. Authentication token refresh needs improvement
 2. File upload size limits need configuration
@@ -108,13 +139,20 @@
 4. Loading states need refinement
 5. Form validation needs completion
 
-## Next Steps
-1. Complete user profile management
-2. Implement report visualization features
-3. Add offline support
-4. Set up push notifications
-5. Enhance accessibility
-6. Implement advanced AI features
-7. Add analytics
-8. Enhance security
-9. Optimize performance 
+## Dependencies to Add
+```python
+# AI-related dependencies
+transformers==4.30.0
+torch==2.0.1
+spacy==3.5.3
+TTS==0.13.3
+whisper==1.1.10
+pdfplumber==0.7.6
+python-docx==0.8.11
+openpyxl==3.1.2
+```
+
+## System Requirements
+- GPU recommended for faster processing
+- Minimum 8GB RAM
+- 20GB free disk space for models 
