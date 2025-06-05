@@ -6,8 +6,12 @@ from app.models.user import User
 from app.schemas.file import FileUpload, FileResponse
 from app.services.file import file_service
 import uuid
+import os
 
 router = APIRouter()
+
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploaded_files")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.get("/", response_model=List[FileResponse])
 def list_files(
@@ -25,7 +29,9 @@ def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Stub: Save file to disk/storage and get file_path
-    file_path = f"/files/{file.filename}"
+    # Save file to disk
+    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_location, "wb") as f:
+        f.write(file.file.read())
     obj_in = FileUpload(file_name=file_name, file_type=file_type, description=description)
-    return FileResponse.from_orm(file_service.upload_file(db, current_user.id, obj_in, file_path)) 
+    return FileResponse.from_orm(file_service.upload_file(db, current_user.id, obj_in, file_location)) 

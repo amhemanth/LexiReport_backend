@@ -7,8 +7,10 @@ from app.models.user import User
 from app.schemas.report import ReportInsightCreate, ReportInsightResponse, ReportQueryCreate
 from app.config.ai_settings import get_ai_settings
 from app.repositories.insight import report_insight_repository, report_query_repository
+from app.services.ai_service import AIService
 
 ai_settings = get_ai_settings()
+ai_service = AIService()
 
 
 class InsightService:
@@ -180,8 +182,10 @@ class InsightService:
             report_insight_repository.delete(db, insight)
 
     def ask_question(self, db: Session, report_id: uuid.UUID, user_id: uuid.UUID, question: str) -> ReportQuery:
-        # Stub: Replace with actual AI/ML Q&A logic
-        answer = f"Stub answer for: {question}"
+        # Use AIService for Q&A
+        report = db.query(Report).filter(Report.id == report_id).first()
+        context = report.content if report else ""
+        answer = ai_service.answer_question(context, question) if context else "No context available."
         return report_query_repository.create(db, report_id, user_id, question, response_text=answer, confidence_score=1.0)
 
 insight_service = InsightService() 

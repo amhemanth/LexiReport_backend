@@ -40,3 +40,9 @@ httpx
 
 # UUID Support
 uuid
+
+python-docx
+openpyxl 
+pandas 
+transformers 
+torch

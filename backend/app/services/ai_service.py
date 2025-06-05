@@ -4,6 +4,10 @@ from fastapi import HTTPException
 import json
 import logging
 from datetime import datetime
+from docx import Document
+import pandas as pd
+import openpyxl
+from transformers import pipeline
 
 from app.config.ai_settings import get_ai_settings
 from app.models.report import Report, ReportInsight
@@ -20,6 +24,9 @@ class AIService:
         self.cache_dir = settings.CACHE_DIR
         self.max_workers = settings.MAX_WORKERS
         self.batch_size = settings.BATCH_SIZE
+        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+        self.qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
+        self.keywords_pipeline = pipeline("feature-extraction", model="distilbert-base-uncased")  # Placeholder
 
     async def process_report(self, report: Report) -> List[ReportInsight]:
         """Process a report and generate insights."""
@@ -125,31 +132,35 @@ class AIService:
         raise NotImplementedError("PDF reading not implemented")
 
     async def _read_docx(self, file_path: str) -> str:
-        """Read DOCX file content."""
-        # TODO: Implement DOCX reading
-        raise NotImplementedError("DOCX reading not implemented")
+        doc = Document(file_path)
+        return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
 
     async def _read_excel(self, file_path: str) -> str:
-        """Read Excel file content."""
-        # TODO: Implement Excel reading
-        raise NotImplementedError("Excel reading not implemented")
+        wb = openpyxl.load_workbook(file_path)
+        text = []
+        for sheet in wb.worksheets:
+            for row in sheet.iter_rows(values_only=True):
+                text.append("\t".join([str(cell) for cell in row if cell is not None]))
+        return "\n".join(text)
 
     async def _read_csv(self, file_path: str) -> str:
-        """Read CSV file content."""
-        # TODO: Implement CSV reading
-        raise NotImplementedError("CSV reading not implemented")
+        df = pd.read_csv(file_path)
+        return df.to_csv(index=False)
 
     async def _generate_summary(self, content: str) -> str:
-        """Generate a summary of the report content."""
-        # TODO: Implement summary generation using AI
-        return "Summary placeholder"
+        summary = self.summarizer(content[:1024], max_length=130, min_length=30, do_sample=False)
+        return summary[0]['summary_text']
 
     async def _generate_key_points(self, content: str) -> List[str]:
-        """Generate key points from the report content."""
-        # TODO: Implement key points generation using AI
-        return ["Key point 1", "Key point 2"]
+        # For demo, split summary into sentences as key points
+        summary = await self._generate_summary(content)
+        return [s.strip() for s in summary.split('.') if s.strip()]
 
     async def _generate_recommendations(self, content: str) -> List[str]:
-        """Generate recommendations based on the report content."""
-        # TODO: Implement recommendations generation using AI
-        return ["Recommendation 1", "Recommendation 2"] 
+        # Placeholder: Use summary as recommendations
+        summary = await self._generate_summary(content)
+        return [f"Recommendation: {s.strip()}" for s in summary.split('.') if s.strip()]
+
+    async def answer_question(self, context: str, question: str) -> str:
+        result = self.qa_pipeline(question=question, context=context[:512])
+        return result['answer'] 
