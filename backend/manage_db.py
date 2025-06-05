@@ -11,11 +11,11 @@ def main():
     args = parser.parse_args()
     
     if args.command == 'reset':
-        reset_database()
+        reset_database("reset")
     elif args.command == 'seed':
         seed()
     elif args.command == 'reset-and-seed':
-        reset_database()
+        reset_database("reset-and-seed")
         seed()
 
 if __name__ == '__main__':

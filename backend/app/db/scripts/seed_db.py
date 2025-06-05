@@ -10,6 +10,9 @@ from app.models.permission import Permission
 from app.models.user_permission import UserPermission
 from app.core.security import get_password_hash
 
+from alembic.config import Config
+from alembic import command 
+
 # Default permissions
 PERMISSIONS = [
     ("api_access", "Access the API"),
@@ -90,8 +93,15 @@ def seed_admin_user(session, permissions: list):
             session.add(up)
     session.commit()
 
+def run_alembic_migrations():
+    """Run Alembic migrations to ensure database schema is up-to-date."""
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+
 def seed():
     """Main seeding function."""
+    run_alembic_migrations()  # Ensure schema is up-to-date before seeding
+    # Create a new database session
     session = get_db_session()
     try:
         # Seed permissions
