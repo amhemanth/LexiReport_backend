@@ -1,10 +1,12 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
 
-from app.models.report import Report, ReportInsight
+from app.models.report import Report, ReportInsight, ReportQuery
 from app.models.user import User
-from app.schemas.report import ReportInsightCreate, ReportInsightResponse
+from app.schemas.report import ReportInsightCreate, ReportInsightResponse, ReportQueryCreate
 from app.config.ai_settings import get_ai_settings
+from app.repositories.insight import report_insight_repository, report_query_repository
 
 ai_settings = get_ai_settings()
 
@@ -158,4 +160,28 @@ class InsightService:
         elif insight_type == "recommendations":
             return "Recommendations:\n1. Recommendation 1\n2. Recommendation 2", 0.85
         else:
-            return "No insight available.", 0.0 
+            return "No insight available.", 0.0
+
+    def get_insights(self, db: Session, report_id: uuid.UUID) -> List[ReportInsight]:
+        return report_insight_repository.get_by_report(db, report_id)
+
+    def create_insight(self, db: Session, report_id: uuid.UUID, obj_in: ReportInsightCreate) -> ReportInsight:
+        return report_insight_repository.create(db, report_id, obj_in)
+
+    def update_insight(self, db: Session, insight_id: uuid.UUID, obj_in: ReportInsightUpdate) -> Optional[ReportInsight]:
+        insight = db.query(ReportInsight).filter(ReportInsight.id == insight_id).first()
+        if not insight:
+            return None
+        return report_insight_repository.update(db, insight, obj_in)
+
+    def delete_insight(self, db: Session, insight_id: uuid.UUID) -> None:
+        insight = db.query(ReportInsight).filter(ReportInsight.id == insight_id).first()
+        if insight:
+            report_insight_repository.delete(db, insight)
+
+    def ask_question(self, db: Session, report_id: uuid.UUID, user_id: uuid.UUID, question: str) -> ReportQuery:
+        # Stub: Replace with actual AI/ML Q&A logic
+        answer = f"Stub answer for: {question}"
+        return report_query_repository.create(db, report_id, user_id, question, response_text=answer, confidence_score=1.0)
+
+insight_service = InsightService() 

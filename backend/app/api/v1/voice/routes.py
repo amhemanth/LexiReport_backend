@@ -6,8 +6,11 @@ from app.models.user import User
 from app.models.analytics import VoiceCommand  # Assuming model is here
 from app.schemas.voice import VoiceCommandCreate, VoiceCommandResponse  # To be created if not present
 from datetime import datetime
+from .profile_routes import router as profile_router
 
 router = APIRouter()
+
+router.include_router(profile_router, prefix="", tags=["VoiceProfile"])
 
 @router.post("/command", response_model=VoiceCommandResponse)
 async def submit_voice_command(
