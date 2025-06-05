@@ -1,0 +1,19 @@
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from datetime import datetime
+
+class VoiceCommandCreate(BaseModel):
+    command_text: str
+    # In the future, add support for audio input
+
+class VoiceCommandResponse(BaseModel):
+    id: str
+    user_id: str
+    command_text: str
+    action_type: str
+    status: str
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+    class Config:
+        orm_mode = True 
