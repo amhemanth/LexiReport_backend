@@ -9,7 +9,7 @@ from app.config.settings import get_settings
 from app.db.base_class import Base
 from app.db.session import engine
 from app.db.scripts.reset_db import reset_database
-from app.db.scripts.seed_db import seed
+from app.db.scripts.seed_db import seed as seed_database
 from alembic.config import Config
 from alembic import command
 
@@ -22,6 +22,10 @@ def run_migrations():
     try:
         # Create Alembic configuration
         alembic_cfg = Config("alembic.ini")
+        
+        # Set the database URL in the alembic.ini file
+        settings = get_settings()
+        alembic_cfg.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
         
         # Run the migration
         command.upgrade(alembic_cfg, "head")
@@ -36,8 +40,9 @@ def init_database():
     
     try:
         # Create database if it doesn't exist
-        if not database_exists(settings.SQLALCHEMY_DATABASE_URI):
-            create_database(settings.SQLALCHEMY_DATABASE_URI)
+        db_url = str(settings.SQLALCHEMY_DATABASE_URI)
+        if not database_exists(db_url):
+            create_database(db_url)
             logger.info("Database created successfully.")
         
         # Run migrations
@@ -58,22 +63,28 @@ def main():
         if args.command == 'init':
             init_database()
         elif args.command == 'reset':
-            reset_database("reset")
+            reset_database()
             run_migrations()
         elif args.command == 'seed':
             run_migrations()  # Ensure schema is up-to-date before seeding
-            seed()
+            seed_database()
         elif args.command == 'reset-and-seed':
             logger.info("Starting reset-and-seed process...")
-            reset_database("reset-and-seed")
-            logger.info("Database reset completed, running migrations...")
-            run_migrations()
-            logger.info("Migrations completed, starting seed process...")
             try:
-                seed()
+                # First reset the database
+                reset_database()
+                logger.info("Database reset completed, running migrations...")
+                
+                # Then run migrations
+                run_migrations()
+                logger.info("Migrations completed, starting seed process...")
+                
+                # Finally seed the database
+                seed_database()
                 logger.info("Seed process completed successfully")
             except Exception as e:
-                logger.error(f"Error during seeding: {str(e)}")
+                logger.error(f"Error during reset-and-seed process: {str(e)}")
+                logger.error("Stack trace:", exc_info=True)
                 raise
         elif args.command == 'migrate':
             run_migrations()

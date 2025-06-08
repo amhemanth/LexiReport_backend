@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.db.base import Base  # Import from base.py which has all models
 from app.db.base import *  # Import all models
 from app.models import *  # Import all models from models package
-from app.db.seed import seed_database  # Import seed function
+from app.db.scripts.seed_db import seed as seed_database  # Import seed function
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
