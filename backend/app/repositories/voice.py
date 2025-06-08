@@ -1,44 +1,62 @@
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.models.media.voice import VoiceProfile, AudioCache
-from typing import Optional, List
-import uuid
+from app.schemas.voice import (
+    VoiceProfileCreate, VoiceProfileUpdate,
+    AudioCacheCreate, AudioCacheUpdate
+)
+from .base import BaseRepository
 
-class VoiceProfileRepository:
-    def get(self, db: Session, profile_id: int) -> Optional[VoiceProfile]:
-        return db.query(VoiceProfile).filter(VoiceProfile.id == profile_id).first()
+class VoiceProfileRepository(
+    BaseRepository[VoiceProfile, VoiceProfileCreate, VoiceProfileUpdate]
+):
+    """Repository for VoiceProfile model."""
 
-    def get_by_user(self, db: Session, user_id: uuid.UUID) -> Optional[VoiceProfile]:
-        return db.query(VoiceProfile).filter(VoiceProfile.user_id == user_id, VoiceProfile.is_active == True).first()
+    def get_by_user(
+        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+    ) -> List[VoiceProfile]:
+        """Get voice profiles by user."""
+        return self.get_multi_by_field(
+            db, field="user_id", value=user_id, skip=skip, limit=limit
+        )
 
-    def create(self, db: Session, user_id: uuid.UUID, voice_id: str, voice_settings: dict) -> VoiceProfile:
-        profile = VoiceProfile(user_id=user_id, voice_id=voice_id, voice_settings=voice_settings)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-        return profile
+    def get_active(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[VoiceProfile]:
+        """Get active voice profiles."""
+        return self.get_multi_by_field(
+            db, field="is_active", value=True, skip=skip, limit=limit
+        )
 
-    def update(self, db: Session, db_obj: VoiceProfile, update_data: dict) -> VoiceProfile:
-        for field, value in update_data.items():
-            setattr(db_obj, field, value)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+    def get_by_language(
+        self, db: Session, *, language: str, skip: int = 0, limit: int = 100
+    ) -> List[VoiceProfile]:
+        """Get voice profiles by language."""
+        return self.get_multi_by_field(
+            db, field="language", value=language, skip=skip, limit=limit
+        )
 
-    def delete(self, db: Session, db_obj: VoiceProfile) -> None:
-        db.delete(db_obj)
-        db.commit()
+class AudioCacheRepository(
+    BaseRepository[AudioCache, AudioCacheCreate, AudioCacheUpdate]
+):
+    """Repository for AudioCache model."""
 
-class AudioCacheRepository:
-    def get_by_hash(self, db: Session, voice_profile_id: int, content_hash: str) -> Optional[AudioCache]:
-        return db.query(AudioCache).filter(AudioCache.voice_profile_id == voice_profile_id, AudioCache.content_hash == content_hash).first()
+    def get_by_voice_profile(
+        self, db: Session, *, voice_profile_id: str,
+        skip: int = 0, limit: int = 100
+    ) -> List[AudioCache]:
+        """Get audio cache entries by voice profile."""
+        return self.get_multi_by_field(
+            db, field="voice_profile_id", value=voice_profile_id,
+            skip=skip, limit=limit
+        )
 
-    def create(self, db: Session, voice_profile_id: int, content_hash: str, audio_path: str) -> AudioCache:
-        cache = AudioCache(voice_profile_id=voice_profile_id, content_hash=content_hash, audio_path=audio_path)
-        db.add(cache)
-        db.commit()
-        db.refresh(cache)
-        return cache
+    def get_by_hash(
+        self, db: Session, *, content_hash: str
+    ) -> Optional[AudioCache]:
+        """Get audio cache entry by content hash."""
+        return self.get_by_field(db, field="content_hash", value=content_hash)
 
-voice_profile_repository = VoiceProfileRepository()
-audio_cache_repository = AudioCacheRepository() 
+# Create repository instances
+voice_profile_repository = VoiceProfileRepository(VoiceProfile)
+audio_cache_repository = AudioCacheRepository(AudioCache) 

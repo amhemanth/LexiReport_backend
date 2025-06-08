@@ -13,10 +13,30 @@ from app.core.exceptions import PermissionException
 
 class Permission(str, Enum):
     """Available permissions in the system."""
+    # User management
     READ_USERS = "read_users"
     WRITE_USERS = "write_users"
     MANAGE_USERS = "manage_users"
     API_ACCESS = "api_access"
+
+    # Comments
+    READ_COMMENTS = "read_comments"
+    WRITE_COMMENTS = "write_comments"
+    MANAGE_COMMENTS = "manage_comments"
+    MENTION_USERS = "mention_users"
+
+    # Voice
+    READ_VOICE = "read_voice"
+    WRITE_VOICE = "write_voice"
+    MANAGE_VOICE = "manage_voice"
+    TEXT_TO_SPEECH = "text_to_speech"
+
+    # Audit
+    READ_AUDIT = "read_audit"
+    WRITE_AUDIT = "write_audit"
+    MANAGE_AUDIT = "manage_audit"
+    VIEW_METRICS = "view_metrics"
+    VIEW_ERRORS = "view_errors"
 
     @classmethod
     def validate_permission(cls, permission_name: str) -> bool:

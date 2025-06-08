@@ -1,30 +1,117 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
+from .base import BaseSchema, TimestampSchema
+from app.models.notifications import NotificationType, NotificationStatus, NotificationPriority
 import uuid
 
-class NotificationCreate(BaseModel):
-    type: str
-    message: str
+class NotificationBase(BaseSchema):
+    """Base notification schema."""
+    title: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=1000)
+    notification_type: NotificationType
+    priority: NotificationPriority = NotificationPriority.NORMAL
+    status: NotificationStatus = NotificationStatus.UNREAD
     metadata: Optional[Dict[str, Any]] = None
+    action_url: Optional[str] = None
 
-class NotificationResponse(BaseModel):
+class NotificationCreate(NotificationBase):
+    """Schema for notification creation."""
+    user_id: uuid.UUID
+
+class NotificationUpdate(NotificationBase):
+    """Schema for notification updates."""
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    message: Optional[str] = Field(None, min_length=1, max_length=1000)
+    notification_type: Optional[NotificationType] = None
+    priority: Optional[NotificationPriority] = None
+    status: Optional[NotificationStatus] = None
+
+class NotificationInDB(NotificationBase, TimestampSchema):
+    """Schema for notification in database."""
     id: uuid.UUID
     user_id: uuid.UUID
-    type: str
-    message: str
-    metadata: Optional[Dict[str, Any]]
-    is_read: bool
-    created_at: datetime
-    model_config = ConfigDict(from_attributes=True)
 
-class NotificationPreferenceUpdate(BaseModel):
-    type: str
-    enabled: bool
+class NotificationResponse(NotificationInDB):
+    """Schema for notification response."""
+    user: Optional[Dict[str, Any]] = None
 
-class NotificationPreferenceResponse(BaseModel):
+class NotificationTemplateBase(BaseSchema):
+    """Base notification template schema."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    template_type: NotificationType
+    subject_template: str
+    body_template: str
+    metadata_schema: Optional[Dict[str, Any]] = None
+    is_active: bool = True
+
+class NotificationTemplateCreate(NotificationTemplateBase):
+    """Schema for notification template creation."""
+    pass
+
+class NotificationTemplateUpdate(NotificationTemplateBase):
+    """Schema for notification template updates."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    template_type: Optional[NotificationType] = None
+    is_active: Optional[bool] = None
+
+class NotificationTemplateInDB(NotificationTemplateBase, TimestampSchema):
+    """Schema for notification template in database."""
     id: uuid.UUID
+
+class NotificationTemplateResponse(NotificationTemplateInDB):
+    """Schema for notification template response."""
+    pass
+
+class NotificationPreferenceBase(BaseSchema):
+    """Base notification preference schema."""
     user_id: uuid.UUID
-    type: str
-    enabled: bool
-    model_config = ConfigDict(from_attributes=True) 
+    notification_type: NotificationType
+    email_enabled: bool = True
+    push_enabled: bool = True
+    in_app_enabled: bool = True
+    priority_threshold: NotificationPriority = NotificationPriority.NORMAL
+
+class NotificationPreferenceCreate(NotificationPreferenceBase):
+    """Schema for notification preference creation."""
+    pass
+
+class NotificationPreferenceUpdate(NotificationPreferenceBase):
+    """Schema for notification preference updates."""
+    email_enabled: Optional[bool] = None
+    push_enabled: Optional[bool] = None
+    in_app_enabled: Optional[bool] = None
+    priority_threshold: Optional[NotificationPriority] = None
+
+class NotificationPreferenceInDB(NotificationPreferenceBase, TimestampSchema):
+    """Schema for notification preference in database."""
+    id: uuid.UUID
+
+class NotificationPreferenceResponse(NotificationPreferenceInDB):
+    """Schema for notification preference response."""
+    user: Optional[Dict[str, Any]] = None
+
+class NotificationList(BaseSchema):
+    """Schema for paginated notification list."""
+    items: List[NotificationResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+class NotificationTemplateList(BaseSchema):
+    """Schema for paginated notification template list."""
+    items: List[NotificationTemplateResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+class NotificationPreferenceList(BaseSchema):
+    """Schema for paginated notification preference list."""
+    items: List[NotificationPreferenceResponse]
+    total: int
+    page: int
+    size: int
+    pages: int 

@@ -1,43 +1,74 @@
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.models.reports import ReportInsight, ReportQuery
-from app.schemas.insight import ReportInsightCreate, ReportInsightUpdate
-from typing import Optional, List
-import uuid
+from app.schemas.insight import (
+    ReportInsightCreate, ReportInsightUpdate,
+    ReportQueryCreate, ReportQueryUpdate
+)
+from .base import BaseRepository
 
-class ReportInsightRepository:
-    def get_by_report(self, db: Session, report_id: uuid.UUID) -> List[ReportInsight]:
-        return db.query(ReportInsight).filter(ReportInsight.report_id == report_id).all()
+class ReportInsightRepository(
+    BaseRepository[ReportInsight, ReportInsightCreate, ReportInsightUpdate]
+):
+    """Repository for ReportInsight model."""
 
-    def create(self, db: Session, report_id: uuid.UUID, obj_in: ReportInsightCreate) -> ReportInsight:
-        db_obj = ReportInsight(report_id=report_id, **obj_in.dict())
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+    def get_by_report(
+        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+    ) -> List[ReportInsight]:
+        """Get insights by report."""
+        return self.get_multi_by_field(
+            db, field="report_id", value=report_id, skip=skip, limit=limit
+        )
 
-    def update(self, db: Session, db_obj: ReportInsight, obj_in: ReportInsightUpdate) -> ReportInsight:
-        update_data = obj_in.dict(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_obj, field, value)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+    def get_by_type(
+        self, db: Session, *, insight_type: str,
+        skip: int = 0, limit: int = 100
+    ) -> List[ReportInsight]:
+        """Get insights by type."""
+        return self.get_multi_by_field(
+            db, field="insight_type", value=insight_type,
+            skip=skip, limit=limit
+        )
 
-    def delete(self, db: Session, db_obj: ReportInsight) -> None:
-        db.delete(db_obj)
-        db.commit()
+    def get_by_confidence(
+        self, db: Session, *, min_confidence: float,
+        skip: int = 0, limit: int = 100
+    ) -> List[ReportInsight]:
+        """Get insights by minimum confidence score."""
+        return db.query(ReportInsight).filter(
+            ReportInsight.confidence_score >= min_confidence
+        ).offset(skip).limit(limit).all()
 
-class ReportQueryRepository:
-    def get_by_report(self, db: Session, report_id: uuid.UUID) -> List[ReportQuery]:
-        return db.query(ReportQuery).filter(ReportQuery.report_id == report_id).all()
+class ReportQueryRepository(
+    BaseRepository[ReportQuery, ReportQueryCreate, ReportQueryUpdate]
+):
+    """Repository for ReportQuery model."""
 
-    def create(self, db: Session, report_id: uuid.UUID, user_id: uuid.UUID, question: str, response_text: str = None, confidence_score: float = None) -> ReportQuery:
-        db_obj = ReportQuery(report_id=report_id, user_id=user_id, query_text=question, response_text=response_text, confidence_score=confidence_score)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+    def get_by_report(
+        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+    ) -> List[ReportQuery]:
+        """Get queries by report."""
+        return self.get_multi_by_field(
+            db, field="report_id", value=report_id, skip=skip, limit=limit
+        )
 
-report_insight_repository = ReportInsightRepository()
-report_query_repository = ReportQueryRepository() 
+    def get_by_user(
+        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+    ) -> List[ReportQuery]:
+        """Get queries by user."""
+        return self.get_multi_by_field(
+            db, field="user_id", value=user_id, skip=skip, limit=limit
+        )
+
+    def get_by_confidence(
+        self, db: Session, *, min_confidence: float,
+        skip: int = 0, limit: int = 100
+    ) -> List[ReportQuery]:
+        """Get queries by minimum confidence score."""
+        return db.query(ReportQuery).filter(
+            ReportQuery.confidence_score >= min_confidence
+        ).offset(skip).limit(limit).all()
+
+# Create repository instances
+report_insight_repository = ReportInsightRepository(ReportInsight)
+report_query_repository = ReportQueryRepository(ReportQuery) 
