@@ -1,9 +1,12 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.models.media.voice import VoiceProfile, AudioCache
+import uuid
+
+from app.models.media.voice import VoiceProfile, AudioCache, VoiceCommand
 from app.schemas.voice import (
     VoiceProfileCreate, VoiceProfileUpdate,
-    AudioCacheCreate, AudioCacheUpdate
+    AudioCacheCreate, AudioCacheUpdate,
+    VoiceCommandCreate, VoiceCommandUpdate
 )
 from .base import BaseRepository
 
@@ -13,7 +16,7 @@ class VoiceProfileRepository(
     """Repository for VoiceProfile model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[VoiceProfile]:
         """Get voice profiles by user."""
         return self.get_multi_by_field(
@@ -42,7 +45,7 @@ class AudioCacheRepository(
     """Repository for AudioCache model."""
 
     def get_by_voice_profile(
-        self, db: Session, *, voice_profile_id: str,
+        self, db: Session, *, voice_profile_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[AudioCache]:
         """Get audio cache entries by voice profile."""
@@ -57,6 +60,36 @@ class AudioCacheRepository(
         """Get audio cache entry by content hash."""
         return self.get_by_field(db, field="content_hash", value=content_hash)
 
+class VoiceCommandRepository(
+    BaseRepository[VoiceCommand, VoiceCommandCreate, VoiceCommandUpdate]
+):
+    """Repository for VoiceCommand model."""
+
+    def get_by_user(
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
+    ) -> List[VoiceCommand]:
+        """Get voice commands by user."""
+        return self.get_multi_by_field(
+            db, field="user_id", value=user_id, skip=skip, limit=limit
+        )
+
+    def get_by_status(
+        self, db: Session, *, status: str, skip: int = 0, limit: int = 100
+    ) -> List[VoiceCommand]:
+        """Get voice commands by status."""
+        return self.get_multi_by_field(
+            db, field="status", value=status, skip=skip, limit=limit
+        )
+
+    def get_by_action_type(
+        self, db: Session, *, action_type: str, skip: int = 0, limit: int = 100
+    ) -> List[VoiceCommand]:
+        """Get voice commands by action type."""
+        return self.get_multi_by_field(
+            db, field="action_type", value=action_type, skip=skip, limit=limit
+        )
+
 # Create repository instances
 voice_profile_repository = VoiceProfileRepository(VoiceProfile)
-audio_cache_repository = AudioCacheRepository(AudioCache) 
+audio_cache_repository = AudioCacheRepository(AudioCache)
+voice_command_repository = VoiceCommandRepository(VoiceCommand) 

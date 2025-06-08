@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Dict
+import uuid
 
 from app.core.deps import get_current_user, get_db
 from app.models.core.user import User
@@ -10,7 +11,7 @@ router = APIRouter()
 
 @router.get("/{report_id}/file")
 async def download_file(
-    report_id: int,
+    report_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -20,7 +21,7 @@ async def download_file(
 
 @router.get("/{report_id}/metadata")
 async def get_file_metadata(
-    report_id: int,
+    report_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict:

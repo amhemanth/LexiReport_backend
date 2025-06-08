@@ -1,5 +1,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
+
 from app.models.processing.offline import OfflineContent
 from app.models.processing.document_processing import SyncQueue, ProcessingJob
 from app.schemas.offline import (
@@ -15,7 +17,7 @@ class OfflineContentRepository(
     """Repository for OfflineContent model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[OfflineContent]:
         """Get offline content by user."""
         return self.get_multi_by_field(

@@ -1,9 +1,12 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
+
 from app.models.reports import ReportInsight, ReportQuery
 from app.schemas.insight import (
     ReportInsightCreate, ReportInsightUpdate,
-    ReportQueryCreate, ReportQueryUpdate
+    ReportQueryCreate, ReportQueryUpdate,
+    ReportQueryResponse
 )
 from .base import BaseRepository
 
@@ -13,7 +16,7 @@ class ReportInsightRepository(
     """Repository for ReportInsight model."""
 
     def get_by_report(
-        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, report_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportInsight]:
         """Get insights by report."""
         return self.get_multi_by_field(
@@ -45,7 +48,7 @@ class ReportQueryRepository(
     """Repository for ReportQuery model."""
 
     def get_by_report(
-        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, report_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportQuery]:
         """Get queries by report."""
         return self.get_multi_by_field(
@@ -53,7 +56,7 @@ class ReportQueryRepository(
         )
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportQuery]:
         """Get queries by user."""
         return self.get_multi_by_field(

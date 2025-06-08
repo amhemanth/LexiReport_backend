@@ -45,14 +45,21 @@ class ErrorLogResponse(ErrorLogInDB):
 
 class VoiceCommandBase(BaseSchema):
     """Base voice command schema."""
-    command_text: str
-    recognized_text: Optional[str] = None
-    confidence: Optional[float] = None
-    context: Optional[Dict[str, Any]] = None
+    command_text: str = Field(..., description="The voice command text")
+    action_type: str = Field(..., description="Type of action to perform")
+    status: str = Field(..., description="Status of the command execution")
+    entity_type: Optional[str] = Field(None, description="Type of entity this command relates to")
+    entity_id: Optional[uuid.UUID] = Field(None, description="ID of the entity this command relates to")
+    meta_data: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 class VoiceCommandCreate(VoiceCommandBase):
     """Schema for voice command creation."""
-    pass
+    user_id: uuid.UUID = Field(..., description="ID of the user who issued the command")
+
+class VoiceCommandUpdate(BaseSchema):
+    """Schema for voice command updates."""
+    status: Optional[str] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 class VoiceCommandInDB(VoiceCommandBase, TimestampSchema):
     """Schema for voice command in database."""
@@ -61,7 +68,8 @@ class VoiceCommandInDB(VoiceCommandBase, TimestampSchema):
 
 class VoiceCommandResponse(VoiceCommandInDB):
     """Schema for voice command response."""
-    pass
+    user: Optional[Dict[str, Any]] = None
+    report: Optional[Dict[str, Any]] = None
 
 class AnalyticsList(BaseSchema):
     """Schema for paginated analytics list."""
@@ -85,4 +93,14 @@ class VoiceCommandList(BaseSchema):
     total: int
     page: int
     size: int
-    pages: int 
+    pages: int
+
+class VoiceCommandFilter(BaseSchema):
+    """Schema for voice command filtering."""
+    user_id: Optional[uuid.UUID] = None
+    action_type: Optional[str] = None
+    status: Optional[str] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[uuid.UUID] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None 

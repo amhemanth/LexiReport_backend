@@ -1,10 +1,11 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
 from app.models.comments import Comment, CommentThread, CommentMention
 from app.schemas.comment import (
     CommentCreate, CommentUpdate,
     CommentThreadCreate, CommentThreadUpdate,
-    CommentMentionCreate
+    CommentMentionCreate, CommentMentionUpdate
 )
 from .base import BaseRepository
 
@@ -12,7 +13,7 @@ class CommentRepository(BaseRepository[Comment, CommentCreate, CommentUpdate]):
     """Repository for Comment model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Comment]:
         """Get comments by user."""
         return self.get_multi_by_field(
@@ -20,7 +21,7 @@ class CommentRepository(BaseRepository[Comment, CommentCreate, CommentUpdate]):
         )
 
     def get_by_thread(
-        self, db: Session, *, thread_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, thread_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Comment]:
         """Get comments in thread."""
         return self.get_multi_by_field(
@@ -28,7 +29,7 @@ class CommentRepository(BaseRepository[Comment, CommentCreate, CommentUpdate]):
         )
 
     def get_by_entity(
-        self, db: Session, *, entity_type: str, entity_id: str,
+        self, db: Session, *, entity_type: str, entity_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[Comment]:
         """Get comments for entity."""
@@ -40,11 +41,27 @@ class CommentRepository(BaseRepository[Comment, CommentCreate, CommentUpdate]):
         ).offset(skip).limit(limit).all()
 
     def get_replies(
-        self, db: Session, *, comment_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, comment_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Comment]:
         """Get replies to comment."""
         return self.get_multi_by_field(
             db, field="parent_id", value=comment_id, skip=skip, limit=limit
+        )
+
+    def get_by_status(
+        self, db: Session, *, status: str, skip: int = 0, limit: int = 100
+    ) -> List[Comment]:
+        """Get comments by status."""
+        return self.get_multi_by_field(
+            db, field="status", value=status, skip=skip, limit=limit
+        )
+
+    def get_edited_comments(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Comment]:
+        """Get edited comments."""
+        return self.get_multi_by_field(
+            db, field="is_edited", value=True, skip=skip, limit=limit
         )
 
 class CommentThreadRepository(
@@ -53,7 +70,7 @@ class CommentThreadRepository(
     """Repository for CommentThread model."""
 
     def get_by_entity(
-        self, db: Session, *, entity_type: str, entity_id: str,
+        self, db: Session, *, entity_type: str, entity_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[CommentThread]:
         """Get threads for entity."""
@@ -63,7 +80,7 @@ class CommentThreadRepository(
         ).offset(skip).limit(limit).all()
 
     def get_by_creator(
-        self, db: Session, *, created_by: str,
+        self, db: Session, *, created_by: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[CommentThread]:
         """Get threads created by user."""
@@ -79,13 +96,21 @@ class CommentThreadRepository(
             db, field="is_locked", value=True, skip=skip, limit=limit
         )
 
+    def get_archived_threads(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CommentThread]:
+        """Get archived threads."""
+        return self.get_multi_by_field(
+            db, field="is_archived", value=True, skip=skip, limit=limit
+        )
+
 class CommentMentionRepository(
-    BaseRepository[CommentMention, CommentMentionCreate, CommentMentionCreate]
+    BaseRepository[CommentMention, CommentMentionCreate, CommentMentionUpdate]
 ):
     """Repository for CommentMention model."""
 
     def get_by_comment(
-        self, db: Session, *, comment_id: str,
+        self, db: Session, *, comment_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[CommentMention]:
         """Get mentions in comment."""
@@ -94,12 +119,20 @@ class CommentMentionRepository(
         )
 
     def get_by_user(
-        self, db: Session, *, user_id: str,
+        self, db: Session, *, user_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[CommentMention]:
         """Get mentions of user."""
         return self.get_multi_by_field(
             db, field="user_id", value=user_id, skip=skip, limit=limit
+        )
+
+    def get_unnotified_mentions(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CommentMention]:
+        """Get unnotified mentions."""
+        return self.get_multi_by_field(
+            db, field="is_notified", value=False, skip=skip, limit=limit
         )
 
 # Create repository instances

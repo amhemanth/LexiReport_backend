@@ -6,15 +6,9 @@ import uuid
 
 class VoiceProfileBase(BaseSchema):
     """Base voice profile schema."""
-    user_id: uuid.UUID
-    voice_id: str
-    voice_name: str
-    language: str
-    accent: Optional[str] = None
-    gender: Optional[str] = None
-    age: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    is_active: bool = True
+    language: str = Field(..., description="Preferred language for voice interactions")
+    voice_id: Optional[str] = Field(None, description="Selected voice ID for text-to-speech")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Voice profile settings")
 
 class VoiceProfileCreate(VoiceProfileBase):
     """Schema for voice profile creation."""
@@ -22,32 +16,35 @@ class VoiceProfileCreate(VoiceProfileBase):
 
 class VoiceProfileUpdate(VoiceProfileBase):
     """Schema for voice profile updates."""
-    voice_name: Optional[str] = None
     language: Optional[str] = None
-    is_active: Optional[bool] = None
+    voice_id: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = None
 
 class VoiceProfileInDB(VoiceProfileBase, TimestampSchema):
     """Schema for voice profile in database."""
     id: uuid.UUID
+    user_id: uuid.UUID
 
 class VoiceProfileResponse(VoiceProfileInDB):
     """Schema for voice profile response."""
-    user: Optional[Dict[str, Any]] = None
+    pass
 
 class AudioCacheBase(BaseSchema):
     """Base audio cache schema."""
-    user_id: uuid.UUID
-    text: str
-    voice_id: str
+    content_hash: str
     audio_format: str
     duration: float
     file_path: str
-    file_size: int
-    metadata: Optional[Dict[str, Any]] = None
 
 class AudioCacheCreate(AudioCacheBase):
     """Schema for audio cache creation."""
     pass
+
+class AudioCacheUpdate(BaseSchema):
+    """Schema for audio cache updates."""
+    audio_format: Optional[str] = None
+    duration: Optional[float] = None
+    file_path: Optional[str] = None
 
 class AudioCacheInDB(AudioCacheBase, TimestampSchema):
     """Schema for audio cache in database."""
@@ -55,8 +52,40 @@ class AudioCacheInDB(AudioCacheBase, TimestampSchema):
 
 class AudioCacheResponse(AudioCacheInDB):
     """Schema for audio cache response."""
-    user: Optional[Dict[str, Any]] = None
-    download_url: Optional[str] = None
+    pass
+
+class TextToSpeechRequest(BaseSchema):
+    """Schema for text-to-speech request."""
+    text: str
+    voice_id: Optional[str] = None
+    language: Optional[str] = None
+    options: Optional[Dict[str, Any]] = None
+
+class TextToSpeechResponse(BaseSchema):
+    """Schema for text-to-speech response."""
+    audio_url: str
+    duration: float
+    metadata: Optional[Dict[str, Any]] = None
+
+class VoiceCommandBase(BaseSchema):
+    """Base voice command schema."""
+    command_text: str
+    action_type: Optional[str] = None
+    status: str = "received"
+    metadata: Optional[Dict[str, Any]] = None
+
+class VoiceCommandCreate(VoiceCommandBase):
+    """Schema for voice command creation."""
+    pass
+
+class VoiceCommandInDB(VoiceCommandBase, TimestampSchema):
+    """Schema for voice command in database."""
+    id: uuid.UUID
+    user_id: uuid.UUID
+
+class VoiceCommandResponse(VoiceCommandInDB):
+    """Schema for voice command response."""
+    pass
 
 class VoiceProfileList(BaseSchema):
     """Schema for paginated voice profile list."""
@@ -72,20 +101,4 @@ class AudioCacheList(BaseSchema):
     total: int
     page: int
     size: int
-    pages: int
-
-class TextToSpeechRequest(BaseSchema):
-    """Schema for text to speech request."""
-    text: str = Field(..., min_length=1, max_length=5000)
-    voice_id: str
-    audio_format: str = Field(..., pattern="^(mp3|wav|ogg)$")
-    speed: Optional[float] = Field(None, ge=0.5, le=2.0)
-    pitch: Optional[float] = Field(None, ge=0.5, le=2.0)
-    metadata: Optional[Dict[str, Any]] = None
-
-class TextToSpeechResponse(BaseSchema):
-    """Schema for text to speech response."""
-    audio_url: str
-    duration: float
-    file_size: int
-    expires_in: int 
+    pages: int 

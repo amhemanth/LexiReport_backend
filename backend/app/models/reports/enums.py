@@ -2,25 +2,48 @@
 from enum import Enum
 
 class ReportType(str, Enum):
-    """Report type enum."""
+    """Report type enum"""
     STANDARD = "standard"
-    ANALYTICAL = "analytical"
-    DASHBOARD = "dashboard"
+    TEMPLATE = "template"
     CUSTOM = "custom"
+    DASHBOARD = "dashboard"
+    ANALYTICAL = "analytical"
+    FINANCIAL = "financial"
+    OPERATIONAL = "operational"
+    COMPLIANCE = "compliance"
 
 class ReportStatus(str, Enum):
-    """Status of a report."""
+    """Report status enum"""
     DRAFT = "draft"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
     PUBLISHED = "published"
     ARCHIVED = "archived"
-    DELETED = "deleted"
+    REJECTED = "rejected"
 
 class ReportTypeCategory(str, Enum):
-    """Categories of report types."""
+    """Report type category enum"""
     FINANCIAL = "financial"
     OPERATIONAL = "operational"
     ANALYTICAL = "analytical"
     COMPLIANCE = "compliance"
+    CUSTOM = "custom"
+
+class AnalysisType(str, Enum):
+    """Report analysis type enum"""
+    TREND = "trend"
+    COMPARISON = "comparison"
+    FORECAST = "forecast"
+    CORRELATION = "correlation"
+    DISTRIBUTION = "distribution"
+    CUSTOM = "custom"
+
+class MetadataType(str, Enum):
+    """Report metadata type enum"""
+    SOURCE = "source"
+    AUTHOR = "author"
+    DEPARTMENT = "department"
+    TAGS = "tags"
     CUSTOM = "custom"
 
 class SharePermission(str, Enum):

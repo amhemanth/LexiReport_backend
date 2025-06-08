@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID
 import uuid
 
-from sqlalchemy import String, ForeignKey, Enum as SQLEnum, JSON, Column, Integer, DateTime, Index
+from sqlalchemy import String, ForeignKey, Enum as SQLEnum, JSON, Column, Integer, DateTime, Index, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum as PyEnum
 from sqlalchemy.dialects.postgresql import UUID
@@ -98,4 +98,38 @@ class DocumentProcessing(Base):
     document: Mapped["FileStorage"] = relationship("FileStorage", foreign_keys=[document_id])
 
     def __repr__(self) -> str:
-        return f"<DocumentProcessing {self.document_id}:{self.processing_type}>" 
+        return f"<DocumentProcessing {self.document_id}:{self.processing_type}>"
+
+
+class ProcessingJob(Base):
+    """Processing job model for background tasks"""
+    
+    __tablename__ = "processing_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    job_type: Mapped[str] = mapped_column(String, nullable=False)
+    content_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    progress: Mapped[float] = mapped_column(Float, default=0.0)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    parameters: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    error: Mapped[Optional[str]] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Add indexes for common queries
+    __table_args__ = (
+        Index('idx_processing_job_user', 'user_id'),
+        Index('idx_processing_job_type', 'job_type'),
+        Index('idx_processing_job_status', 'status'),
+        Index('idx_processing_job_priority', 'priority'),
+        Index('idx_processing_job_created', 'created_at'),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return f"<ProcessingJob {self.id}:{self.job_type}>" 

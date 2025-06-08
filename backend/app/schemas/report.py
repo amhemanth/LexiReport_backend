@@ -2,19 +2,24 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from .base import BaseSchema, TimestampSchema
-from app.models.reports import ReportType, ReportStatus, ReportTypeCategory
+from app.models.reports import ReportType, ReportStatus, ReportTypeCategory, AnalysisType, MetadataType
 import uuid
 
 class ReportBase(BaseSchema):
     """Base report schema with common attributes."""
-    title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
-    report_type: ReportType
-    report_type_category: ReportTypeCategory
+    title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None)
+    type: ReportType = ReportType.STANDARD
+    category: ReportTypeCategory = ReportTypeCategory.ANALYTICAL
     status: ReportStatus = ReportStatus.DRAFT
-    content: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
     is_public: bool = False
+    is_archived: bool = False
+    analysis_type: Optional[AnalysisType] = None
+    analysis_data: Optional[Dict[str, Any]] = None
+    metadata_type: Optional[MetadataType] = None
+    metadata_data: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
+    template_id: Optional[uuid.UUID] = None
 
 class ReportCreate(ReportBase):
     """Schema for report creation."""
@@ -42,11 +47,17 @@ class ReportShareBase(BaseSchema):
     """Base report share schema."""
     report_id: uuid.UUID
     shared_with: uuid.UUID
-    permission_level: str = Field(..., pattern="^(read|write|admin)$")
+    permission: str = Field(..., pattern="^(view|edit|admin)$")
+    expires_at: Optional[datetime] = None
 
 class ReportShareCreate(ReportShareBase):
     """Schema for report share creation."""
     pass
+
+class ReportShareUpdate(BaseSchema):
+    """Schema for report share updates."""
+    permission: Optional[str] = Field(None, pattern="^(view|edit|admin)$")
+    expires_at: Optional[datetime] = None
 
 class ReportShareInDB(ReportShareBase, TimestampSchema):
     """Schema for report share in database."""
@@ -128,6 +139,11 @@ class ReportExportCreate(ReportExportBase):
     """Schema for report export creation."""
     pass
 
+class ReportExportUpdate(BaseSchema):
+    """Schema for report export updates."""
+    export_format: Optional[str] = Field(None, pattern="^(pdf|excel|csv|json)$")
+    export_config: Optional[Dict[str, Any]] = None
+
 class ReportExportInDB(ReportExportBase, TimestampSchema):
     """Schema for report export in database."""
     id: uuid.UUID
@@ -170,4 +186,15 @@ class ReportExportList(BaseSchema):
     total: int
     page: int
     size: int
-    pages: int 
+    pages: int
+
+class ReportTypeResponse(BaseSchema):
+    """Schema for report type response."""
+    name: str
+    description: Optional[str] = None
+    category: ReportTypeCategory
+
+class ReportStatusResponse(BaseSchema):
+    """Schema for report status response."""
+    name: str
+    description: Optional[str] = None 

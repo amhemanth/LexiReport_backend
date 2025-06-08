@@ -4,32 +4,25 @@ This module imports and exposes all models from the application.
 """
 
 # Core models
-from app.models.core import (
-    User,
-    Role,
-    Permission,
-    UserRole,
-    UserPermission,
-    RolePermission,
-    UserPreferences,
-    UserActivity,
-    ActivityType,
-    Password
-)
+from app.models.core import *
 
 # Report models
 from app.models.reports import (
     Report,
     ReportShare,
+    ReportContent,
+    ReportInsight,
+    ReportQuery,
+    ReportVersion,
+    ReportComment,
     ReportTemplate,
     ReportSchedule,
     ReportExport,
-    ReportContent,
-    ReportMetadata,
-    ReportAnalysis,
     ReportType,
     ReportStatus,
-    ReportTypeCategory
+    ReportTypeCategory,
+    AnalysisType,
+    MetadataType
 )
 
 # Analytics models
@@ -77,17 +70,7 @@ from app.models.tags import (
 )
 
 # Processing models
-from app.models.processing import (
-    DocumentProcessing,
-    DocumentProcessingQueue,
-    DocumentProcessingResult,
-    ProcessingType,
-    OfflineContent,
-    SyncQueue,
-    ContentType,
-    SyncAction,
-    ProcessingStatus
-)
+from app.models.processing import *
 
 # Integration models
 from app.models.integration import (
@@ -122,11 +105,15 @@ __all__ = [
     "ReportSchedule",
     "ReportExport",
     "ReportContent",
-    "ReportMetadata",
-    "ReportAnalysis",
+    "ReportInsight",
+    "ReportQuery",
+    "ReportVersion",
+    "ReportComment",
     "ReportType",
     "ReportStatus",
     "ReportTypeCategory",
+    "AnalysisType",
+    "MetadataType",
     
     # Analytics models
     "SystemMetrics",

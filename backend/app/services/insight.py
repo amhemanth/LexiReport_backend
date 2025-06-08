@@ -1,17 +1,22 @@
-from typing import List, Optional, Dict, Any
+from datetime import datetime
+from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 import uuid
 
-from app.models.report import Report, ReportInsight, ReportQuery
+from app.models.reports import Report, ReportInsight, ReportQuery
 from app.models.core.user import User
-from app.schemas.insight import ReportInsightCreate, ReportInsightResponse, ReportQueryCreate
+from app.schemas.insight import (
+    ReportInsightCreate, ReportInsightResponse, ReportInsightUpdate,
+    ReportQueryCreate, ReportQueryResponse
+)
 from app.config.ai_settings import get_ai_settings
 from app.repositories.insight import report_insight_repository, report_query_repository
 from app.services.ai_service import AIService
+from app.core.exceptions import NotFoundError, ValidationError
 
 ai_settings = get_ai_settings()
 ai_service = AIService()
-
 
 class InsightService:
     """Service for handling report insights."""
@@ -22,18 +27,18 @@ class InsightService:
     async def generate_insights(
         self,
         user: User,
-        report_id: int,
-        insight_types: List[str] = None
+        report_id: uuid.UUID,
+        insight_types: Optional[List[str]] = None
     ) -> List[ReportInsightResponse]:
         """Generate insights for a report using AI."""
         # Get report
         report = (
             self.db.query(Report)
-            .filter(Report.id == report_id, Report.user_id == user.id)
+            .filter(Report.id == report_id, Report.created_by == user.id)
             .first()
         )
         if not report:
-            return []
+            raise NotFoundError(f"Report {report_id} not found")
 
         # Default insight types if not specified
         if not insight_types:
@@ -50,6 +55,7 @@ class InsightService:
             # Create insight record
             insight = ReportInsight(
                 report_id=report.id,
+                user_id=user.id,
                 insight_type=insight_type,
                 content=insight_content,
                 confidence_score=confidence_score,
@@ -70,34 +76,53 @@ class InsightService:
     async def get_insights(
         self,
         user: User,
-        report_id: int,
-        insight_type: Optional[str] = None
+        report_id: uuid.UUID,
+        insight_type: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "created_at",
+        sort_desc: bool = True
     ) -> List[ReportInsightResponse]:
-        """Get insights for a report."""
+        """Get insights for a report with filtering and pagination."""
         # Verify report ownership
         report = (
             self.db.query(Report)
-            .filter(Report.id == report_id, Report.user_id == user.id)
+            .filter(Report.id == report_id, Report.created_by == user.id)
             .first()
         )
         if not report:
-            return []
+            raise NotFoundError(f"Report {report_id} not found")
 
-        # Query insights
+        # Build query
         query = self.db.query(ReportInsight).filter(ReportInsight.report_id == report_id)
+        
         if insight_type:
             query = query.filter(ReportInsight.insight_type == insight_type)
-        
-        insights = query.all()
+        if min_confidence is not None:
+            query = query.filter(ReportInsight.confidence_score >= min_confidence)
+        if start_date:
+            query = query.filter(ReportInsight.created_at >= start_date)
+        if end_date:
+            query = query.filter(ReportInsight.created_at <= end_date)
+
+        # Apply sorting
+        if hasattr(ReportInsight, sort_by):
+            sort_column = getattr(ReportInsight, sort_by)
+            query = query.order_by(desc(sort_column) if sort_desc else sort_column)
+
+        # Apply pagination
+        insights = query.offset(skip).limit(limit).all()
         return [ReportInsightResponse.from_orm(insight) for insight in insights]
 
     async def update_insight(
         self,
         user: User,
-        insight_id: int,
-        content: str,
-        confidence_score: float
-    ) -> Optional[ReportInsightResponse]:
+        insight_id: uuid.UUID,
+        update_data: ReportInsightUpdate
+    ) -> ReportInsightResponse:
         """Update an insight."""
         # Get insight and verify report ownership
         insight = (
@@ -105,16 +130,17 @@ class InsightService:
             .join(Report)
             .filter(
                 ReportInsight.id == insight_id,
-                Report.user_id == user.id
+                Report.created_by == user.id
             )
             .first()
         )
         if not insight:
-            return None
+            raise NotFoundError(f"Insight {insight_id} not found")
 
         # Update insight
-        insight.content = content
-        insight.confidence_score = confidence_score
+        for field, value in update_data.dict(exclude_unset=True).items():
+            setattr(insight, field, value)
+        
         insight.metadata["last_updated"] = datetime.utcnow().isoformat()
 
         self.db.add(insight)
@@ -126,7 +152,7 @@ class InsightService:
     async def delete_insight(
         self,
         user: User,
-        insight_id: int
+        insight_id: uuid.UUID
     ) -> bool:
         """Delete an insight."""
         # Get insight and verify report ownership
@@ -135,57 +161,99 @@ class InsightService:
             .join(Report)
             .filter(
                 ReportInsight.id == insight_id,
-                Report.user_id == user.id
+                Report.created_by == user.id
             )
             .first()
         )
         if not insight:
-            return False
+            raise NotFoundError(f"Insight {insight_id} not found")
 
         self.db.delete(insight)
         self.db.commit()
 
         return True
 
+    async def bulk_create_insights(
+        self,
+        user: User,
+        report_id: uuid.UUID,
+        insights: List[ReportInsightCreate]
+    ) -> List[ReportInsightResponse]:
+        """Create multiple insights in bulk."""
+        report = (
+            self.db.query(Report)
+            .filter(Report.id == report_id, Report.created_by == user.id)
+            .first()
+        )
+        if not report:
+            raise NotFoundError(f"Report {report_id} not found")
+
+        created_insights = []
+        for insight_data in insights:
+            insight = ReportInsight(
+                report_id=report.id,
+                user_id=user.id,
+                **insight_data.dict()
+            )
+            self.db.add(insight)
+            created_insights.append(insight)
+
+        self.db.commit()
+        for insight in created_insights:
+            self.db.refresh(insight)
+
+        return [ReportInsightResponse.from_orm(insight) for insight in created_insights]
+
     async def _generate_insight(
         self,
         file_path: str,
         insight_type: str
-    ) -> tuple[str, float]:
+    ) -> Tuple[str, float]:
         """Generate an insight using AI."""
-        # TODO: Implement actual AI integration
-        # This is a placeholder that should be replaced with actual AI processing
-        if insight_type == "summary":
-            return "This is a summary of the report.", 0.95
-        elif insight_type == "key_points":
-            return "Key points from the report:\n1. Point 1\n2. Point 2", 0.90
-        elif insight_type == "recommendations":
-            return "Recommendations:\n1. Recommendation 1\n2. Recommendation 2", 0.85
-        else:
-            return "No insight available.", 0.0
+        try:
+            # TODO: Implement actual AI integration
+            # This is a placeholder that should be replaced with actual AI processing
+            if insight_type == "summary":
+                return "This is a summary of the report.", 0.95
+            elif insight_type == "key_points":
+                return "Key points from the report:\n1. Point 1\n2. Point 2", 0.90
+            elif insight_type == "recommendations":
+                return "Recommendations:\n1. Recommendation 1\n2. Recommendation 2", 0.85
+            else:
+                return "No insight available.", 0.0
+        except Exception as e:
+            raise ValidationError(f"Failed to generate insight: {str(e)}")
 
-    def get_insights(self, db: Session, report_id: uuid.UUID) -> List[ReportInsight]:
-        return report_insight_repository.get_by_report(db, report_id)
+    async def ask_question(
+        self,
+        user: User,
+        report_id: uuid.UUID,
+        question: str
+    ) -> ReportQueryResponse:
+        """Ask a question about a report."""
+        report = (
+            self.db.query(Report)
+            .filter(Report.id == report_id, Report.created_by == user.id)
+            .first()
+        )
+        if not report:
+            raise NotFoundError(f"Report {report_id} not found")
 
-    def create_insight(self, db: Session, report_id: uuid.UUID, obj_in: ReportInsightCreate) -> ReportInsight:
-        return report_insight_repository.create(db, report_id, obj_in)
-
-    def update_insight(self, db: Session, insight_id: uuid.UUID, obj_in: ReportInsightUpdate) -> Optional[ReportInsight]:
-        insight = db.query(ReportInsight).filter(ReportInsight.id == insight_id).first()
-        if not insight:
-            return None
-        return report_insight_repository.update(db, insight, obj_in)
-
-    def delete_insight(self, db: Session, insight_id: uuid.UUID) -> None:
-        insight = db.query(ReportInsight).filter(ReportInsight.id == insight_id).first()
-        if insight:
-            report_insight_repository.delete(db, insight)
-
-    def ask_question(self, db: Session, report_id: uuid.UUID, user_id: uuid.UUID, question: str) -> ReportQuery:
         # Use AIService for Q&A
-        report = db.query(Report).filter(Report.id == report_id).first()
         context = report.content if report else ""
-        answer = ai_service.answer_question(context, question) if context else "No context available."
-        return report_query_repository.create(db, report_id, user_id, question, response_text=answer, confidence_score=1.0)
+        answer = await ai_service.answer_question(context, question) if context else "No context available."
+        
+        query = ReportQuery(
+            report_id=report.id,
+            user_id=user.id,
+            query_text=question,
+            response_text=answer,
+            confidence_score=1.0
+        )
+        self.db.add(query)
+        self.db.commit()
+        self.db.refresh(query)
+
+        return ReportQueryResponse.from_orm(query)
 
 insight_service = InsightService() 

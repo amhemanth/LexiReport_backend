@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from .base import BaseSchema, TimestampSchema
-from app.models.notifications import NotificationType, NotificationStatus, NotificationPriority
+from app.models.notifications.enums import NotificationType, NotificationStatus, NotificationPriority
 import uuid
 
 class NotificationBase(BaseSchema):
@@ -10,7 +10,7 @@ class NotificationBase(BaseSchema):
     title: str = Field(..., min_length=1, max_length=200)
     message: str = Field(..., min_length=1, max_length=1000)
     notification_type: NotificationType
-    priority: NotificationPriority = NotificationPriority.NORMAL
+    priority: NotificationPriority = NotificationPriority.MEDIUM
     status: NotificationStatus = NotificationStatus.UNREAD
     metadata: Optional[Dict[str, Any]] = None
     action_url: Optional[str] = None
@@ -31,6 +31,8 @@ class NotificationInDB(NotificationBase, TimestampSchema):
     """Schema for notification in database."""
     id: uuid.UUID
     user_id: uuid.UUID
+    is_read: bool = False
+    read_at: Optional[datetime] = None
 
 class NotificationResponse(NotificationInDB):
     """Schema for notification response."""
@@ -66,12 +68,10 @@ class NotificationTemplateResponse(NotificationTemplateInDB):
 
 class NotificationPreferenceBase(BaseSchema):
     """Base notification preference schema."""
-    user_id: uuid.UUID
-    notification_type: NotificationType
     email_enabled: bool = True
     push_enabled: bool = True
     in_app_enabled: bool = True
-    priority_threshold: NotificationPriority = NotificationPriority.NORMAL
+    notification_types: Dict[str, bool] = Field(default_factory=dict)
 
 class NotificationPreferenceCreate(NotificationPreferenceBase):
     """Schema for notification preference creation."""
@@ -82,11 +82,12 @@ class NotificationPreferenceUpdate(NotificationPreferenceBase):
     email_enabled: Optional[bool] = None
     push_enabled: Optional[bool] = None
     in_app_enabled: Optional[bool] = None
-    priority_threshold: Optional[NotificationPriority] = None
+    notification_types: Optional[Dict[str, bool]] = None
 
 class NotificationPreferenceInDB(NotificationPreferenceBase, TimestampSchema):
     """Schema for notification preference in database."""
     id: uuid.UUID
+    user_id: uuid.UUID
 
 class NotificationPreferenceResponse(NotificationPreferenceInDB):
     """Schema for notification preference response."""

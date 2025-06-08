@@ -11,7 +11,7 @@ from transformers import pipeline
 
 from app.config.ai_settings import get_ai_settings
 from app.models.reports import Report, ReportInsight
-from app.schemas.insight import ReportInsightCreate
+from app.schemas.insight import ReportInsightCreate, ReportInsightResponse
 
 settings = get_ai_settings()
 logger = logging.getLogger(__name__)

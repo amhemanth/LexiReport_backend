@@ -17,15 +17,21 @@ class ReportInsightUpdate(BaseModel):
 class ReportInsightResponse(BaseModel):
     id: uuid.UUID
     report_id: uuid.UUID
+    user_id: uuid.UUID
     insight_type: str
     content: str
     confidence_score: Optional[float]
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 class ReportQueryCreate(BaseModel):
     question: str
+
+class ReportQueryUpdate(BaseModel):
+    response_text: Optional[str] = None
+    confidence_score: Optional[float] = None
 
 class ReportQueryResponse(BaseModel):
     id: uuid.UUID

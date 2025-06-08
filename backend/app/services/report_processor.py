@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models.report import Report, ReportStatus, ReportVersion, ReportInsight
+from app.models.reports import Report, ReportStatus, ReportVersion, ReportInsight
 from app.config.ai_settings import get_ai_settings
 from app.config.storage_settings import get_storage_settings
 

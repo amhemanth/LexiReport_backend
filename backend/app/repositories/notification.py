@@ -1,21 +1,21 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.models.notifications import (
-    Notification, NotificationTemplate, NotificationPreference,
-    NotificationType, NotificationStatus, NotificationPriority
-)
+from app.models.notifications.notification import Notification, NotificationTemplate, NotificationPreference
+from app.models.notifications.enums import NotificationType, NotificationStatus, NotificationPriority
 from app.schemas.notification import (
     NotificationCreate, NotificationUpdate,
     NotificationTemplateCreate, NotificationTemplateUpdate,
     NotificationPreferenceCreate, NotificationPreferenceUpdate
 )
 from .base import BaseRepository
+import uuid
+from datetime import datetime
 
 class NotificationRepository(BaseRepository[Notification, NotificationCreate, NotificationUpdate]):
     """Repository for Notification model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Notification]:
         """Get notifications for user."""
         return self.get_multi_by_field(
@@ -50,6 +50,18 @@ class NotificationRepository(BaseRepository[Notification, NotificationCreate, No
             db, field="priority", value=priority, skip=skip, limit=limit
         )
 
+    def mark_as_read(self, db: Session, notification_id: uuid.UUID) -> Optional[Notification]:
+        """Mark notification as read."""
+        notification = self.get(db, id=notification_id)
+        if notification:
+            notification.status = NotificationStatus.READ
+            notification.is_read = True
+            notification.read_at = datetime.utcnow()
+            db.add(notification)
+            db.commit()
+            db.refresh(notification)
+        return notification
+
 class NotificationTemplateRepository(
     BaseRepository[NotificationTemplate, NotificationTemplateCreate, NotificationTemplateUpdate]
 ):
@@ -79,7 +91,7 @@ class NotificationPreferenceRepository(
     """Repository for NotificationPreference model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[NotificationPreference]:
         """Get preferences for user."""
         return self.get_multi_by_field(
@@ -97,7 +109,7 @@ class NotificationPreferenceRepository(
         )
 
     def get_enabled_preferences(
-        self, db: Session, *, user_id: str,
+        self, db: Session, *, user_id: uuid.UUID,
         skip: int = 0, limit: int = 100
     ) -> List[NotificationPreference]:
         """Get enabled preferences for user."""
@@ -107,6 +119,22 @@ class NotificationPreferenceRepository(
             NotificationPreference.push_enabled == True,
             NotificationPreference.in_app_enabled == True
         ).offset(skip).limit(limit).all()
+
+    def update(
+        self, db: Session, *, user_id: uuid.UUID, obj_in: NotificationPreferenceUpdate
+    ) -> NotificationPreference:
+        """Update notification preferences."""
+        db_obj = self.get_by_user(db, user_id=user_id)
+        if not db_obj:
+            db_obj = NotificationPreference(user_id=user_id)
+            db.add(db_obj)
+        update_data = obj_in.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_obj, field, value)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
 # Create repository instances
 notification_repository = NotificationRepository(Notification)

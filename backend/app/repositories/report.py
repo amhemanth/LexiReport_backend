@@ -1,14 +1,17 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
+
 from app.models.reports import (
     Report, ReportShare, ReportTemplate, ReportSchedule,
-    ReportExport, ReportType, ReportStatus, ReportTypeCategory
+    ReportExport, ReportType, ReportStatus, ReportTypeCategory,
+    AnalysisType, MetadataType
 )
 from app.schemas.report import (
-    ReportCreate, ReportUpdate, ReportShareCreate,
+    ReportCreate, ReportUpdate, ReportShareCreate, ReportShareUpdate,
     ReportTemplateCreate, ReportTemplateUpdate,
     ReportScheduleCreate, ReportScheduleUpdate,
-    ReportExportCreate
+    ReportExportCreate, ReportExportUpdate
 )
 from .base import BaseRepository
 
@@ -16,7 +19,7 @@ class ReportRepository(BaseRepository[Report, ReportCreate, ReportUpdate]):
     """Repository for Report model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Report]:
         """Get reports created by user."""
         return self.get_multi_by_field(
@@ -24,7 +27,7 @@ class ReportRepository(BaseRepository[Report, ReportCreate, ReportUpdate]):
         )
 
     def get_shared_with_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[Report]:
         """Get reports shared with user."""
         return db.query(Report).join(
@@ -34,12 +37,12 @@ class ReportRepository(BaseRepository[Report, ReportCreate, ReportUpdate]):
         ).offset(skip).limit(limit).all()
 
     def get_by_type(
-        self, db: Session, *, report_type: ReportType,
+        self, db: Session, *, type: ReportType,
         skip: int = 0, limit: int = 100
     ) -> List[Report]:
         """Get reports by type."""
         return self.get_multi_by_field(
-            db, field="report_type", value=report_type, skip=skip, limit=limit
+            db, field="type", value=type, skip=skip, limit=limit
         )
 
     def get_by_status(
@@ -51,11 +54,63 @@ class ReportRepository(BaseRepository[Report, ReportCreate, ReportUpdate]):
             db, field="status", value=status, skip=skip, limit=limit
         )
 
-class ReportShareRepository(BaseRepository[ReportShare, ReportShareCreate, ReportShareCreate]):
+    def get_by_category(
+        self, db: Session, *, category: ReportTypeCategory,
+        skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get reports by category."""
+        return self.get_multi_by_field(
+            db, field="category", value=category, skip=skip, limit=limit
+        )
+
+    def get_by_analysis_type(
+        self, db: Session, *, analysis_type: AnalysisType,
+        skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get reports by analysis type."""
+        return self.get_multi_by_field(
+            db, field="analysis_type", value=analysis_type, skip=skip, limit=limit
+        )
+
+    def get_by_metadata_type(
+        self, db: Session, *, metadata_type: MetadataType,
+        skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get reports by metadata type."""
+        return self.get_multi_by_field(
+            db, field="metadata_type", value=metadata_type, skip=skip, limit=limit
+        )
+
+    def get_by_template(
+        self, db: Session, *, template_id: uuid.UUID,
+        skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get reports by template."""
+        return self.get_multi_by_field(
+            db, field="template_id", value=template_id, skip=skip, limit=limit
+        )
+
+    def get_archived(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get archived reports."""
+        return self.get_multi_by_field(
+            db, field="is_archived", value=True, skip=skip, limit=limit
+        )
+
+    def get_public(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Report]:
+        """Get public reports."""
+        return self.get_multi_by_field(
+            db, field="is_public", value=True, skip=skip, limit=limit
+        )
+
+class ReportShareRepository(BaseRepository[ReportShare, ReportShareCreate, ReportShareUpdate]):
     """Repository for ReportShare model."""
 
     def get_by_report(
-        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, report_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportShare]:
         """Get shares for a report."""
         return self.get_multi_by_field(
@@ -63,7 +118,7 @@ class ReportShareRepository(BaseRepository[ReportShare, ReportShareCreate, Repor
         )
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportShare]:
         """Get shares for a user."""
         return self.get_multi_by_field(
@@ -74,7 +129,7 @@ class ReportTemplateRepository(BaseRepository[ReportTemplate, ReportTemplateCrea
     """Repository for ReportTemplate model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportTemplate]:
         """Get templates created by user."""
         return self.get_multi_by_field(
@@ -94,7 +149,7 @@ class ReportScheduleRepository(BaseRepository[ReportSchedule, ReportScheduleCrea
     """Repository for ReportSchedule model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportSchedule]:
         """Get schedules created by user."""
         return self.get_multi_by_field(
@@ -109,11 +164,11 @@ class ReportScheduleRepository(BaseRepository[ReportSchedule, ReportScheduleCrea
             db, field="is_active", value=True, skip=skip, limit=limit
         )
 
-class ReportExportRepository(BaseRepository[ReportExport, ReportExportCreate, ReportExportCreate]):
+class ReportExportRepository(BaseRepository[ReportExport, ReportExportCreate, ReportExportUpdate]):
     """Repository for ReportExport model."""
 
     def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportExport]:
         """Get exports created by user."""
         return self.get_multi_by_field(
@@ -121,7 +176,7 @@ class ReportExportRepository(BaseRepository[ReportExport, ReportExportCreate, Re
         )
 
     def get_by_report(
-        self, db: Session, *, report_id: str, skip: int = 0, limit: int = 100
+        self, db: Session, *, report_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> List[ReportExport]:
         """Get exports for a report."""
         return self.get_multi_by_field(

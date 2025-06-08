@@ -4,39 +4,49 @@ from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Boolean,
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign, remote
 from enum import Enum as PyEnum
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.db.base_class import Base
 from app.models.core.user import User
-from app.models.reports.enums import ReportType, ReportStatus, ReportTypeCategory
+from app.models.reports.enums import ReportType, ReportStatus, ReportTypeCategory, AnalysisType, MetadataType
 
 
 class Report(Base):
     """Model for reports."""
     __tablename__ = "reports"
     
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(50), default="draft")
+    status: Mapped[ReportStatus] = mapped_column(SQLEnum(ReportStatus), nullable=False, default=ReportStatus.DRAFT)
     type: Mapped[ReportType] = mapped_column(SQLEnum(ReportType), nullable=False, default=ReportType.STANDARD)
     category: Mapped[ReportTypeCategory] = mapped_column(SQLEnum(ReportTypeCategory), nullable=False, default=ReportTypeCategory.ANALYTICAL)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Analysis fields
+    analysis_type: Mapped[Optional[AnalysisType]] = mapped_column(SQLEnum(AnalysisType))
+    analysis_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    
+    # Metadata fields
+    metadata_type: Mapped[Optional[MetadataType]] = mapped_column(SQLEnum(MetadataType))
+    metadata_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    
+    # Common fields
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    created_by: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), 
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), 
         ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=False
     )
-    updated_by: Mapped[Optional[UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        PGUUID(as_uuid=True), 
         ForeignKey("users.id", ondelete="SET NULL"), 
         nullable=True
     )
-    template_id: Mapped[Optional[UUID]] = mapped_column(
-        UUID(as_uuid=True),
+    template_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
         ForeignKey("report_templates.id", ondelete="SET NULL"),
         nullable=True
     )
@@ -61,26 +71,31 @@ class Report(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    metadata_obj: Mapped[Optional["ReportMetadata"]] = relationship(
-        "ReportMetadata",
+    insights: Mapped[List["ReportInsight"]] = relationship(
+        "ReportInsight",
         back_populates="report",
-        uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    analysis: Mapped[Optional["ReportAnalysis"]] = relationship(
-        "ReportAnalysis",
+    queries: Mapped[List["ReportQuery"]] = relationship(
+        "ReportQuery",
         back_populates="report",
-        uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    comments: Mapped[List["Comment"]] = relationship(
-        "Comment",
-        primaryjoin="and_(foreign(Comment.entity_type) == 'report', foreign(Comment.entity_id) == Report.id)",
+    versions: Mapped[List["ReportVersion"]] = relationship(
+        "ReportVersion",
         back_populates="report",
         cascade="all, delete-orphan",
-        passive_deletes=True
+        passive_deletes=True,
+        order_by="desc(ReportVersion.version_number)"
+    )
+    comments: Mapped[List["ReportComment"]] = relationship(
+        "ReportComment",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        primaryjoin="and_(Report.id == ReportComment.report_id, ReportComment.parent_id == None)"
     )
     activities: Mapped[List["UserActivity"]] = relationship(
         "UserActivity",
@@ -116,7 +131,6 @@ class Report(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    # New relationships
     template: Mapped[Optional["ReportTemplate"]] = relationship(
         "ReportTemplate",
         back_populates="reports",
@@ -161,9 +175,13 @@ class Report(Base):
         Index("ix_reports_created_by", "created_by"),
         Index("ix_reports_updated_by", "updated_by"),
         Index("ix_reports_status", "status"),
+        Index("ix_reports_type", "type"),
+        Index("ix_reports_category", "category"),
         Index("ix_reports_created", "created_at"),
         Index("ix_reports_updated", "updated_at"),
         Index("ix_reports_template", "template_id"),
+        Index("ix_reports_analysis_type", "analysis_type"),
+        Index("ix_reports_metadata_type", "metadata_type"),
     )
 
     def __repr__(self) -> str:
@@ -174,10 +192,10 @@ class ReportShare(Base):
     """Model for report sharing."""
     __tablename__ = "report_shares"
 
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
-    shared_by: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    shared_with: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    report_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    shared_by: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shared_with: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     permission: Mapped[str] = mapped_column(String(50), default="view")
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
