@@ -4,12 +4,14 @@ from app.models.analytics.voice_command import VoiceCommand
 from app.schemas.analytics import (
     VoiceCommandCreate,
     VoiceCommandUpdate,
-    VoiceCommandFilter
+    VoiceCommandFilter,
+    VoiceCommandResponse
 )
 from app.core.exceptions import NotFoundException
+from app.repositories.base import BaseRepository
 from datetime import datetime
 
-class VoiceCommandRepository:
+class VoiceCommandRepository(BaseRepository[VoiceCommand, VoiceCommandCreate, VoiceCommandUpdate]):
     """Repository for voice command operations."""
 
     def get(self, db: Session, id: str) -> Optional[VoiceCommand]:
@@ -20,11 +22,9 @@ class VoiceCommandRepository:
         self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
     ) -> List[VoiceCommand]:
         """Get voice commands by user."""
-        return db.query(VoiceCommand)\
-            .filter(VoiceCommand.user_id == user_id)\
-            .offset(skip)\
-            .limit(limit)\
-            .all()
+        return self.get_multi_by_field(
+            db, field="user_id", value=user_id, skip=skip, limit=limit
+        )
 
     def get_by_entity(
         self, db: Session, *, entity_type: str, entity_id: str,
@@ -45,11 +45,9 @@ class VoiceCommandRepository:
         skip: int = 0, limit: int = 100
     ) -> List[VoiceCommand]:
         """Get voice commands by action type."""
-        return db.query(VoiceCommand)\
-            .filter(VoiceCommand.action_type == action_type)\
-            .offset(skip)\
-            .limit(limit)\
-            .all()
+        return self.get_multi_by_field(
+            db, field="action_type", value=action_type, skip=skip, limit=limit
+        )
 
     def get_by_status(
         self, db: Session, *, status: str,
@@ -124,4 +122,4 @@ class VoiceCommandRepository:
         return query.offset(skip).limit(limit).all()
 
 # Create repository instance
-voice_command_repository = VoiceCommandRepository() 
+voice_command_repository = VoiceCommandRepository(VoiceCommand) 

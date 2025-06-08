@@ -2,7 +2,8 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 import uuid
 
-from app.models.media.voice import VoiceProfile, AudioCache, VoiceCommand
+from app.models.media.voice import VoiceProfile, AudioCache
+from app.models.analytics.voice_command import VoiceCommand
 from app.schemas.voice import (
     VoiceProfileCreate, VoiceProfileUpdate,
     AudioCacheCreate, AudioCacheUpdate,

@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Union
 from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, validator, ConfigDict
 from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
     # API Settings
@@ -58,6 +59,29 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
+
+    # AI Settings
+    MODEL_PATH: str
+    CACHE_DIR: str
+    MAX_WORKERS: int
+    BATCH_SIZE: int
+    AI_MODEL_NAME: str
+    AI_QA_MODEL: str
+    AI_KEYWORDS_MODEL: str
+
+    @validator("MODEL_PATH", "CACHE_DIR", pre=True)
+    def validate_paths(cls, v: str) -> str:
+        """Validate and create paths if they don't exist."""
+        if not os.path.exists(v):
+            os.makedirs(v, exist_ok=True)
+        return v
+
+    @validator("MAX_WORKERS", "BATCH_SIZE", pre=True)
+    def validate_positive_int(cls, v: int) -> int:
+        """Validate that the value is positive."""
+        if v <= 0:
+            raise ValueError("Value must be positive")
+        return v
 
     model_config = ConfigDict(extra='allow', from_attributes=True, env_file='.env')
 

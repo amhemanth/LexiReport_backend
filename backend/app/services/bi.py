@@ -1,5 +1,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+import uuid
+
 from app.repositories.bi import (
     bi_connection_repository,
     bi_dashboard_repository,
@@ -9,8 +11,8 @@ from app.repositories.bi import (
 from app.models.integration.bi_integration import (
     BIConnection,
     BIDashboard,
-    BIReport,
-    SyncJob
+    BIIntegration,
+    BISyncJob
 )
 from app.schemas.bi import (
     BIConnectionCreate, BIConnectionUpdate,
@@ -19,7 +21,6 @@ from app.schemas.bi import (
     SyncJobCreate, SyncJobUpdate
 )
 from app.core.exceptions import NotFoundException
-import uuid
 
 class BIService:
     """Service for managing BI connections, dashboards, reports, and sync jobs."""
@@ -107,63 +108,63 @@ class BIService:
         """Delete a BI dashboard."""
         return bi_dashboard_repository.delete(db, id=id)
 
-    # Report methods
-    def get_report(
+    # Integration methods
+    def get_integration(
         self, db: Session, *, id: uuid.UUID
-    ) -> Optional[BIReport]:
-        """Get a BI report by ID."""
+    ) -> Optional[BIIntegration]:
+        """Get a BI integration by ID."""
         return bi_report_repository.get(db, id=id)
 
-    def get_reports_by_dashboard(
-        self, db: Session, *, dashboard_id: uuid.UUID,
+    def get_integrations_by_platform(
+        self, db: Session, *, platform_type: str,
         skip: int = 0, limit: int = 100
-    ) -> List[BIReport]:
-        """Get reports by dashboard."""
-        return bi_report_repository.get_by_dashboard(
-            db, dashboard_id=dashboard_id, skip=skip, limit=limit
+    ) -> List[BIIntegration]:
+        """Get integrations by platform type."""
+        return bi_report_repository.get_by_platform_type(
+            db, platform_type=platform_type, skip=skip, limit=limit
         )
 
-    def create_report(
+    def create_integration(
         self, db: Session, *, obj_in: BIReportCreate
-    ) -> BIReport:
-        """Create a new BI report."""
+    ) -> BIIntegration:
+        """Create a new BI integration."""
         return bi_report_repository.create(db, obj_in=obj_in)
 
-    def update_report(
+    def update_integration(
         self, db: Session, *, id: uuid.UUID, obj_in: BIReportUpdate
-    ) -> BIReport:
-        """Update a BI report."""
+    ) -> BIIntegration:
+        """Update a BI integration."""
         db_obj = bi_report_repository.get(db, id=id)
         if not db_obj:
-            raise NotFoundException(f"BI report with id {id} not found")
+            raise NotFoundException(f"BI integration with id {id} not found")
         return bi_report_repository.update(db, db_obj=db_obj, obj_in=obj_in)
 
-    def delete_report(
+    def delete_integration(
         self, db: Session, *, id: uuid.UUID
-    ) -> BIReport:
-        """Delete a BI report."""
+    ) -> BIIntegration:
+        """Delete a BI integration."""
         return bi_report_repository.delete(db, id=id)
 
     # Sync job methods
     def get_sync_job(
         self, db: Session, *, id: uuid.UUID
-    ) -> Optional[SyncJob]:
+    ) -> Optional[BISyncJob]:
         """Get a sync job by ID."""
         return sync_job_repository.get(db, id=id)
 
-    def get_sync_jobs_by_connection(
-        self, db: Session, *, connection_id: uuid.UUID,
+    def get_sync_jobs_by_integration(
+        self, db: Session, *, integration_id: uuid.UUID,
         skip: int = 0, limit: int = 100
-    ) -> List[SyncJob]:
-        """Get sync jobs by connection."""
-        return sync_job_repository.get_by_connection(
-            db, connection_id=connection_id, skip=skip, limit=limit
+    ) -> List[BISyncJob]:
+        """Get sync jobs by integration."""
+        return sync_job_repository.get_by_integration(
+            db, integration_id=integration_id, skip=skip, limit=limit
         )
 
     def get_sync_jobs_by_status(
         self, db: Session, *, status: str,
         skip: int = 0, limit: int = 100
-    ) -> List[SyncJob]:
+    ) -> List[BISyncJob]:
         """Get sync jobs by status."""
         return sync_job_repository.get_by_status(
             db, status=status, skip=skip, limit=limit
@@ -171,13 +172,13 @@ class BIService:
 
     def create_sync_job(
         self, db: Session, *, obj_in: SyncJobCreate
-    ) -> SyncJob:
+    ) -> BISyncJob:
         """Create a new sync job."""
         return sync_job_repository.create(db, obj_in=obj_in)
 
     def update_sync_job(
         self, db: Session, *, id: uuid.UUID, obj_in: SyncJobUpdate
-    ) -> SyncJob:
+    ) -> BISyncJob:
         """Update a sync job."""
         db_obj = sync_job_repository.get(db, id=id)
         if not db_obj:
@@ -186,7 +187,7 @@ class BIService:
 
     def delete_sync_job(
         self, db: Session, *, id: uuid.UUID
-    ) -> SyncJob:
+    ) -> BISyncJob:
         """Delete a sync job."""
         return sync_job_repository.delete(db, id=id)
 

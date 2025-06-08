@@ -43,13 +43,9 @@ class InsightGenerationRepository(BaseRepository[InsightGeneration, InsightGener
         """Get all insights for a report."""
         return db.query(self.model).filter(self.model.report_id == report_id).all()
     
-    def get_by_status(self, db: Session, status: str) -> List[InsightGeneration]:
-        """Get all insights with a specific status."""
-        return db.query(self.model).filter(self.model.status == status).all()
-    
-    def get_by_type(self, db: Session, insight_types: List[str]) -> List[InsightGeneration]:
-        """Get all insights of specific types."""
-        return db.query(self.model).filter(self.model.insight_types.overlap(insight_types)).all()
+    def get_by_type(self, db: Session, insight_type: str) -> List[InsightGeneration]:
+        """Get all insights of a specific type."""
+        return db.query(self.model).filter(self.model.insight_type == insight_type).all()
 
 # Create repository instances
 ai_analysis_repository = AIAnalysisRepository(AIAnalysis)

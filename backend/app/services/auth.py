@@ -3,6 +3,8 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+import uuid
+
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.repositories.user import user_repository
 from app.schemas.auth import UserCreate, UserLogin, Token
@@ -17,7 +19,6 @@ from app.core.exceptions import (
     InactiveUserError
 )
 from app.core.permissions import Permission as PermissionEnum
-import uuid
 
 settings = get_settings()
 

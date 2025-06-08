@@ -20,7 +20,8 @@ from app.core.exceptions import (
     ValidationException,
     AuthenticationException,
     PermissionException,
-    NotFoundException
+    NotFoundException,
+    AIProcessingError
 )
 
 settings = get_settings()
@@ -63,6 +64,7 @@ app.add_exception_handler(NotFoundException, base_not_found_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 app.add_exception_handler(LexiReportException, lexireport_exception_handler)
+app.add_exception_handler(AIProcessingError, ai_processing_exception_handler)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

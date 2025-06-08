@@ -122,4 +122,19 @@ class InactiveUserError(HTTPException):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=detail
-        ) 
+        )
+
+class AIProcessingError(HTTPException):
+    """AI processing error."""
+    def __init__(self, detail: str = "AI processing failed"):
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )
+
+def ai_processing_exception_handler(request: Request, exc: AIProcessingError) -> JSONResponse:
+    """Handle AI processing exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    ) 

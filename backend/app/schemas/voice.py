@@ -1,6 +1,5 @@
-from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import Field
 from .base import BaseSchema, TimestampSchema
 import uuid
 
@@ -69,14 +68,25 @@ class TextToSpeechResponse(BaseSchema):
 
 class VoiceCommandBase(BaseSchema):
     """Base voice command schema."""
-    command_text: str
-    action_type: Optional[str] = None
-    status: str = "received"
-    metadata: Optional[Dict[str, Any]] = None
+    command_text: str = Field(..., description="The voice command text")
+    action_type: str = Field(..., description="Type of action to perform")
+    status: str = Field(..., description="Current status of the command")
+    entity_type: Optional[str] = Field(None, description="Type of entity this command is related to")
+    entity_id: Optional[uuid.UUID] = Field(None, description="ID of the related entity")
+    meta_data: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 class VoiceCommandCreate(VoiceCommandBase):
     """Schema for voice command creation."""
     pass
+
+class VoiceCommandUpdate(BaseSchema):
+    """Schema for voice command updates."""
+    command_text: Optional[str] = None
+    action_type: Optional[str] = None
+    status: Optional[str] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[uuid.UUID] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 class VoiceCommandInDB(VoiceCommandBase, TimestampSchema):
     """Schema for voice command in database."""
@@ -98,6 +108,14 @@ class VoiceProfileList(BaseSchema):
 class AudioCacheList(BaseSchema):
     """Schema for paginated audio cache list."""
     items: List[AudioCacheResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+class VoiceCommandList(BaseSchema):
+    """Schema for paginated voice command list."""
+    items: List[VoiceCommandResponse]
     total: int
     page: int
     size: int

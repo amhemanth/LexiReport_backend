@@ -5,7 +5,8 @@ from app.repositories.voice import (
     audio_cache_repository,
     voice_command_repository
 )
-from app.models.media.voice import VoiceProfile, AudioCache, VoiceCommand
+from app.models.media.voice import VoiceProfile, AudioCache
+from app.models.analytics.voice_command import VoiceCommand
 from app.schemas.voice import (
     VoiceProfileCreate, VoiceProfileUpdate, VoiceProfileResponse,
     AudioCacheCreate, AudioCacheUpdate, AudioCacheResponse,

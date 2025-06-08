@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.repositories.user import UserRepository, user_repository
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.models.core.user import User
 from app.core.exceptions import (
     DatabaseError,
     UserNotFoundError
@@ -19,7 +20,7 @@ class UserService:
             user = self.user_repository.get(db, id=user_id)
             if not user:
                 raise UserNotFoundError()
-            return user
+            return UserResponse.model_validate(user)
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error retrieving user: {str(e)}")
 
@@ -31,7 +32,8 @@ class UserService:
     ) -> List[UserResponse]:
         """Get list of users."""
         try:
-            return self.user_repository.get_multi(db, skip=skip, limit=limit)
+            users = self.user_repository.get_multi(db, skip=skip, limit=limit)
+            return [UserResponse.model_validate(user) for user in users]
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error retrieving users: {str(e)}")
 
@@ -39,7 +41,7 @@ class UserService:
         self,
         db: Session,
         *,
-        db_obj: UserResponse,
+        db_obj: User,
         obj_in: UserUpdate
     ) -> UserResponse:
         """Update user."""
@@ -47,7 +49,7 @@ class UserService:
             user = self.user_repository.update(db, db_obj=db_obj, obj_in=obj_in)
             if not user:
                 raise UserNotFoundError()
-            return user
+            return UserResponse.model_validate(user)
         except SQLAlchemyError as e:
             raise DatabaseError(f"Error updating user: {str(e)}")
 

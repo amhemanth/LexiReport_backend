@@ -11,7 +11,7 @@ from sqlalchemy import pool
 from alembic import context
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from app.core.config import settings
+from app.core.config import settings, get_settings
 from app.db.base import Base  # Import from base.py which has all models
 from app.db.base import *  # Import all models
 from app.models import *  # Import all models from models package
@@ -19,8 +19,6 @@ from app.db.scripts.seed_db import seed as seed_database  # Import seed function
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app.config.settings import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

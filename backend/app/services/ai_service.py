@@ -9,11 +9,17 @@ import pandas as pd
 import openpyxl
 from transformers import pipeline
 
-from app.config.ai_settings import get_ai_settings
-from app.models.reports import Report, ReportInsight
+from app.config.settings import get_settings
+from app.models.reports import (
+    Report,
+    ReportInsight,
+    ReportContent,
+    ReportVersion
+)
 from app.schemas.insight import ReportInsightCreate, ReportInsightResponse
+from app.core.exceptions import AIProcessingError
 
-settings = get_ai_settings()
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 class AIService:
@@ -24,9 +30,9 @@ class AIService:
         self.cache_dir = settings.CACHE_DIR
         self.max_workers = settings.MAX_WORKERS
         self.batch_size = settings.BATCH_SIZE
-        self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-        self.qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
-        self.keywords_pipeline = pipeline("feature-extraction", model="distilbert-base-uncased")  # Placeholder
+        self.summarizer = pipeline("summarization", model=settings.AI_MODEL_NAME)
+        self.qa_pipeline = pipeline("question-answering", model=settings.AI_QA_MODEL)
+        self.keywords_pipeline = pipeline("feature-extraction", model=settings.AI_KEYWORDS_MODEL)
 
     async def process_report(self, report: Report) -> List[ReportInsight]:
         """Process a report and generate insights."""
@@ -40,15 +46,12 @@ class AIService:
             return insights
         except Exception as e:
             logger.error(f"Error processing report {report.id}: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error processing report: {str(e)}"
-            )
+            raise AIProcessingError(f"Error processing report: {str(e)}")
 
     async def _read_report_content(self, report: Report) -> str:
         """Read report content based on file type."""
         if not os.path.exists(report.file_path):
-            raise HTTPException(status_code=404, detail="Report file not found")
+            raise AIProcessingError("Report file not found")
 
         try:
             if report.file_type == "pdf":
@@ -60,16 +63,10 @@ class AIService:
             elif report.file_type == "csv":
                 return await self._read_csv(report.file_path)
             else:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Unsupported file type: {report.file_type}"
-                )
+                raise AIProcessingError(f"Unsupported file type: {report.file_type}")
         except Exception as e:
             logger.error(f"Error reading report content: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error reading report content: {str(e)}"
-            )
+            raise AIProcessingError(f"Error reading report content: {str(e)}")
 
     async def _generate_insights(
         self,
@@ -163,4 +160,7 @@ class AIService:
 
     async def answer_question(self, context: str, question: str) -> str:
         result = self.qa_pipeline(question=question, context=context[:512])
-        return result['answer'] 
+        return result['answer']
+
+# Create service instance
+ai_service = AIService() 
