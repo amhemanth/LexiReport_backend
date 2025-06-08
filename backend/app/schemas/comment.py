@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class CommentCreate(BaseModel):
@@ -18,8 +18,7 @@ class CommentResponse(BaseModel):
     mentions: Optional[List[uuid.UUID]]
     created_at: datetime
     updated_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CommentThreadResponse(BaseModel):
     thread_id: uuid.UUID
@@ -32,5 +31,4 @@ class TagResponse(BaseModel):
     id: uuid.UUID
     name: str
     created_at: datetime
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

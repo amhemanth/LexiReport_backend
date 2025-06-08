@@ -76,7 +76,8 @@ class DocumentProcessing(Base):
     
     __tablename__ = "document_processing"
 
-    document_id: Mapped[int] = mapped_column(ForeignKey("file_storage.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("file_storage.id", ondelete="CASCADE"), nullable=False)
     processing_type: Mapped[ProcessingType] = mapped_column(SQLEnum(ProcessingType), nullable=False)
     status: Mapped[ProcessingStatus] = mapped_column(SQLEnum(ProcessingStatus), default=ProcessingStatus.PENDING)
     result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
@@ -94,7 +95,7 @@ class DocumentProcessing(Base):
     )
 
     # Relationships
-    document: Mapped["FileStorage"] = relationship("FileStorage")
+    document: Mapped["FileStorage"] = relationship("FileStorage", foreign_keys=[document_id])
 
     def __repr__(self) -> str:
         return f"<DocumentProcessing {self.document_id}:{self.processing_type}>" 

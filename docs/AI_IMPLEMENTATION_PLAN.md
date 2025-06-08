@@ -1,7 +1,75 @@
 # AI Implementation Plan
 
 ## Overview
-This document outlines the implementation plan for AI features in LexiReport using open-source models and tools.
+This document outlines the implementation plan and achievements for AI features in LexiReport using open-source models and tools.
+
+## AI Pipeline Overview
+
+```mermaid
+graph TD
+    A[Document Upload] --> B[Text Extraction (pdfplumber, docx, openpyxl)]
+    B --> C[Summarization (BART-large-cnn)]
+    C --> D[AI Insights]
+    C --> E[Text-to-Speech (Coqui TTS)]
+    C --> F[Document Classification (DistilBERT)]
+    C --> G[Entity Extraction (spaCy)]
+    C --> H[Q&A (Roberta SQuAD2)]
+    D --> I[Voice-over Generation]
+    E --> I
+    F --> D
+    G --> D
+    H --> D
+    J[Voice Command (Whisper)] --> K[Command Processing (spaCy, transformers)]
+    K --> L[Action Execution]
+```
+
+- **Solid lines**: Implemented
+- **Dashed lines**: In progress or planned
+
+## Achievements (2024)
+- ✅ Text extraction for PDF, Word, Excel
+- ✅ Summarization (BART)
+- ✅ Text-to-speech (Coqui TTS)
+- ✅ Voice command (Whisper)
+- ✅ Q&A (Roberta SQuAD2)
+- ✅ Entity extraction (spaCy)
+- ✅ Document classification (DistilBERT)
+- ✅ Modular AI service endpoints
+
+## Implementation Phases
+
+### Phase 1: Core AI Features (Complete)
+- Text extraction, summarization, TTS, basic voice command
+
+### Phase 2: Advanced Features (In Progress)
+- Document classification, entity extraction, advanced Q&A, enhanced voice command
+
+### Phase 3: Integration & Optimization (Planned)
+- Full integration, performance optimization, error handling, caching
+
+## Technical Stack
+- **Transformers** (Hugging Face)
+- **PyTorch**
+- **spaCy**
+- **Coqui TTS**
+- **Whisper**
+- **pdfplumber, python-docx, openpyxl**
+
+## API Endpoints (AI)
+- `POST /api/v1/reports/{report_id}/generate-voice` — Generate voice-over
+- `POST /api/v1/voice/command` — Submit voice command
+- `POST /api/v1/reports/{report_id}/analyze` — Analyze report
+- `POST /api/v1/reports/{report_id}/query` — Q&A
+
+## Next Steps
+- 🟡 Optimize performance and caching
+- 🟡 Add custom voice model support
+- 🟡 Expand multi-language support
+- 🟡 Enhance real-time collaboration
+
+---
+
+*See ARCHITECTURE.md for system diagrams and API_REFERENCE.md for endpoint details.*
 
 ## 1. Voice-Over Generation System
 

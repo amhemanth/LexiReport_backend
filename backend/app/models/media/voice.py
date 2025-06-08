@@ -15,13 +15,13 @@ class VoiceProfile(Base):
     
     __tablename__ = "voice_profiles"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     voice_id: Mapped[str] = mapped_column(String, nullable=False)
     voice_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="voice_profile")
@@ -40,11 +40,11 @@ class AudioCache(Base):
     
     __tablename__ = "audio_cache"
 
-    id = Column(Integer, primary_key=True, index=True)
-    voice_profile_id: Mapped[int] = mapped_column(ForeignKey("voice_profiles.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    voice_profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("voice_profiles.id", ondelete="CASCADE"), nullable=False)
     content_hash: Mapped[str] = mapped_column(String, nullable=False)
     audio_path: Mapped[str] = mapped_column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     # Relationships
     voice_profile: Mapped["VoiceProfile"] = relationship("VoiceProfile", back_populates="audio_cache")

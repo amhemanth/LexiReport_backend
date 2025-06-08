@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class VoiceProfileCreate(BaseModel):
@@ -21,8 +21,7 @@ class VoiceProfileResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AudioCacheResponse(BaseModel):
     id: int
@@ -30,5 +29,4 @@ class AudioCacheResponse(BaseModel):
     content_hash: str
     audio_path: str
     created_at: datetime
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

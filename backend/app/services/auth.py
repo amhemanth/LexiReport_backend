@@ -6,9 +6,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.repositories.user import user_repository
 from app.schemas.auth import UserCreate, UserLogin, Token
-from app.models.user import User, UserRole
-from app.models.permission import Permission as PermissionModel
-from app.models.user_permission import UserPermission
+from app.models.core.user import User, UserRole
+from app.models.core.user_permission import UserPermission
+from app.models.core.permission import Permission
 from app.config.settings import get_settings
 from app.core.exceptions import (
     DatabaseError,
@@ -16,7 +16,7 @@ from app.core.exceptions import (
     InvalidCredentialsError,
     InactiveUserError
 )
-from app.core.permissions import Permission
+from app.core.permissions import Permission as PermissionEnum
 import uuid
 
 settings = get_settings()
@@ -37,19 +37,42 @@ class AuthService:
     def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
         return db.query(User).offset(skip).limit(limit).all()
 
+    def _ensure_permission_exists(self, db: Session, permission_name: str) -> Permission:
+        """Ensure a permission exists in the database."""
+        permission = db.query(Permission).filter(Permission.name == permission_name).first()
+        if not permission:
+            # Create the permission if it doesn't exist
+            permission = Permission(
+                id=uuid.uuid4(),
+                name=permission_name,
+                description=f"Permission for {permission_name}",
+                module="core",
+                action=permission_name,
+                is_active=True
+            )
+            db.add(permission)
+            db.flush()
+        return permission
+
     def _create_user_permission(self, db: Session, user_id: uuid.UUID, permission_name: str) -> None:
         """Create a user permission."""
-        permission = db.query(PermissionModel).filter(PermissionModel.name == permission_name).first()
-        if not permission:
-            raise ValueError(f"Permission {permission_name} does not exist")
-
-        user_permission = UserPermission(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            permission_id=permission.id,
-            created_at=datetime.now(timezone.utc)
-        )
-        db.add(user_permission)
+        permission = self._ensure_permission_exists(db, permission_name)
+        
+        # Check if user already has this permission
+        existing = db.query(UserPermission).filter(
+            UserPermission.user_id == user_id,
+            UserPermission.permission_id == permission.id
+        ).first()
+        
+        if not existing:
+            user_permission = UserPermission(
+                id=uuid.uuid4(),
+                user_id=user_id,
+                permission_id=permission.id,
+                granted_at=datetime.now(timezone.utc),
+                is_active=True
+            )
+            db.add(user_permission)
 
     def register(self, db: Session, user_in: UserCreate) -> dict:
         """Register a new user."""
@@ -72,9 +95,9 @@ class AuthService:
             
             # Add default permissions
             default_permissions = [
-                Permission.API_ACCESS.value,  # Basic API access
-                Permission.READ_USERS.value,  # Can read own user data
-                Permission.WRITE_USERS.value  # Can update own user data
+                PermissionEnum.API_ACCESS.value,  # Basic API access
+                PermissionEnum.READ_USERS.value,  # Can read own user data
+                PermissionEnum.WRITE_USERS.value  # Can update own user data
             ]
             
             for permission in default_permissions:

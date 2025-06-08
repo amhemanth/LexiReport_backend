@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body, UploadFile, File as FastAPIFile
 from sqlalchemy.orm import Session
 from typing import List
-from app.api.deps import get_current_user, get_db
-from app.models.user import User
+from app.core.deps import get_current_user, get_db
+from app.models.core.user import User
 from app.schemas.file import FileUpload, FileResponse
 from app.services.file import file_service
 import uuid

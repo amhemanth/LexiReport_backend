@@ -1,8 +1,8 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app.repositories.base import BaseRepository
-from app.models.user import User, UserRole
-from app.models.password import Password
+from app.models.core.user import User, UserRole
+from app.models.core.password import Password
 from app.schemas.user import UserCreate, UserUpdate
 from datetime import datetime, timezone
 import uuid
@@ -134,5 +134,5 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         return False
 
 # Singleton instance for use in services
-from app.models.user import User
+from app.models.core.user import User
 user_repository = UserRepository(User) 

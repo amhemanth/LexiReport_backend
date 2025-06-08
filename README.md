@@ -1,68 +1,34 @@
 # LexiReport
 
-LexiReport is an AI-powered document analysis application with a modern mobile-first frontend and a robust, secure backend.
+LexiReport is an AI-powered document analysis platform with a modern mobile-first frontend and a robust, secure backend.
 
-## Features
+## System Overview
 
-- 📱 Cross-platform mobile and web app (React Native + Expo)
-- 🌓 Dark mode support
-- 🔐 Secure authentication (JWT)
-- 📊 AI-powered report analysis and insights
-- 📤 Easy report upload and management
-- 🗂️ User profile and account management
-
-## Tech Stack
-
-### Frontend
-- React Native (Expo)
-- TypeScript
-- Zustand (State Management)
-- Expo Router (Navigation)
-- Axios (API communication)
-
-### Backend
-- FastAPI (Python 3.8+)
-- SQLAlchemy ORM
-- PostgreSQL
-- JWT Authentication
-- Alembic (Migrations)
-
-## Getting Started
-
-### Prerequisites
-- Node.js 16+
-- Python 3.8+
-- PostgreSQL
-- Expo CLI
-
-### Installation
-
-1. **Clone the repository:**
-```bash
-git clone <repository-url>
-cd <project-root>
+```mermaid
+graph TD
+    FE["Frontend (Expo/React Native)"] -->|"REST API"| BE["Backend (FastAPI)"]
+    BE --> DB["PostgreSQL"]
+    BE --> AI["AI Services"]
+    BE --> S3["S3/Object Storage"]
+    BE --> Redis["Redis"]
+    BE --> Notif["Notifications"]
+    FE --> Docs["docs/"]
+    FE --> Mobile["App Stores"]
+    FE --> Web["Vercel/Netlify"]
+    BE --> CI["CI/CD"]
+    FE --> CI
 ```
 
-2. **Set up the backend:**
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.template .env  # Update .env with your settings
-alembic upgrade head
-uvicorn app.main:app --reload
-```
-
-3. **Set up the frontend:**
-```bash
-cd frontend
-npm install
-npx expo start
-```
+## Key Features
+- 📱 Cross-platform mobile & web app (React Native + Expo)
+- 🌓 Dark/Light mode
+- 🔐 Secure authentication (JWT, RBAC)
+- 📊 AI-powered report analysis, insights, and Q&A
+- 🗂️ Report upload, management, and sharing
+- 🔔 Notifications, offline mode, user preferences
+- 🤝 Collaboration (sharing, comments, tags)
 
 ## Project Structure
-
 ```
 .
 ├── backend/    # FastAPI backend
@@ -70,45 +36,45 @@ npx expo start
 └── docs/       # Documentation
 ```
 
-- See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed architecture overview.
-- See [docs/features.md](docs/features.md) for a full feature list.
+## Documentation
+- [Architecture](docs/ARCHITECTURE.md)
+- [API Reference](docs/API_REFERENCE.md)
+- [AI Implementation](docs/AI_IMPLEMENTATION_PLAN.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Testing](docs/testing.md)
 
-## Development
+## Quickstart
 
-- **Backend:**
-  - API docs at `/api/v1/docs` (Swagger UI)
-  - Environment variables in `.env`
-  - Database migrations via Alembic
-- **Frontend:**
-  - Expo development server
-  - Hot reloading
-  - TypeScript and component-based architecture
+### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.template .env  # Edit .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-## Testing
+### Frontend
+```bash
+cd frontend
+npm install
+npx expo start
+```
 
-- **Backend:**
-  - Run tests with `pytest` in the `backend` directory
-  - See [docs/testing.md](docs/testing.md) for details
-- **Frontend:**
-  - Run `npm test` in the `frontend` directory
-
-## Deployment
-
-- **Backend:**
-  - Set up PostgreSQL, configure environment, run migrations, deploy with Uvicorn/Gunicorn
-- **Frontend:**
-  - Build with Expo, deploy to app stores or web
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+## Achievements (2025)
+- ✅ Modern, cross-platform frontend (Expo/React Native)
+- ✅ Secure authentication (JWT, RBAC)
+- ✅ Report upload, management, and AI-powered insights
+- ✅ Voice-over, Q&A, and BI integration (MVP)
+- ✅ Offline mode, notifications, and user preferences
+- ✅ Collaboration (sharing, comments, tags)
+- ✅ Robust backend (FastAPI, PostgreSQL, Alembic)
+- ✅ Modular AI services (summarization, TTS, Q&A)
+- ✅ CI/CD, monitoring, and scalable deployment
 
 ## License
-
 MIT License. See the LICENSE file for details.
 
 ## Support

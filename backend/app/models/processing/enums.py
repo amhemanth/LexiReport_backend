@@ -1,11 +1,27 @@
 from enum import Enum
 
 class ProcessingStatus(str, Enum):
-    """Processing status enum"""
+    """Status of document processing."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+class ProcessingPriority(str, Enum):
+    """Priority levels for processing."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+class SyncStatus(str, Enum):
+    """Status of sync operations."""
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     FAILED = "failed"
+    PARTIAL = "partial"
 
 class ProcessingType(str, Enum):
     """Processing type enum"""

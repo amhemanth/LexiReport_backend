@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.api.deps import get_current_user, get_db
-from app.models.user import User
+from app.core.deps import get_current_user, get_db
+from app.models.core.user import User
 from app.models.analytics import VoiceCommand  # Assuming model is here
 from app.schemas.voice import VoiceCommandCreate, VoiceCommandResponse  # To be created if not present
 from datetime import datetime

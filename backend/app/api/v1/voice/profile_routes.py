@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.deps import get_current_user, get_db
-from app.models.user import User
+from app.core.deps import get_current_user, get_db
+from app.models.core.user import User
 from app.schemas.voice_profile import VoiceProfileCreate, VoiceProfileUpdate, VoiceProfileResponse
 from app.services.voice import voice_service
 import uuid

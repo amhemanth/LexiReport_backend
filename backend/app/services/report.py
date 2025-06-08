@@ -5,14 +5,12 @@ from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
 import mimetypes
 
-from app.models.user import User
-from app.models.report import (
+from app.models.core.user import User
+from app.models.reports import (
     Report,
     ReportType,
     ReportStatus,
-    ReportVersion,
     ReportInsight,
-    VoiceOver,
     ReportQuery
 )
 from app.schemas.report import (

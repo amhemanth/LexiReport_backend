@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class OfflineContentResponse(BaseModel):
@@ -9,8 +9,7 @@ class OfflineContentResponse(BaseModel):
     content_type: str
     content_data: Dict[str, Any]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SyncQueueResponse(BaseModel):
     id: uuid.UUID
@@ -20,8 +19,7 @@ class SyncQueueResponse(BaseModel):
     created_at: datetime
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProcessingJobResponse(BaseModel):
     id: uuid.UUID
@@ -31,5 +29,4 @@ class ProcessingJobResponse(BaseModel):
     created_at: datetime
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

@@ -8,7 +8,7 @@ from app.core.validators import (
     validate_full_name,
     validate_pagination_params
 )
-from app.models.user import UserRole
+from app.models.core.user import UserRole
 import uuid
 
 class PasswordUpdate(BaseModel):

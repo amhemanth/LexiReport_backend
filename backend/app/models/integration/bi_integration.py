@@ -21,8 +21,8 @@ class BIConnection(Base):
     platform_type: Mapped[BIPlatformType] = mapped_column(SQLEnum(BIPlatformType), nullable=False)
     connection_details: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships with cascade rules
     dashboards: Mapped[List["BIDashboard"]] = relationship(
@@ -34,6 +34,8 @@ class BIConnection(Base):
     # Add indexes for common queries
     __table_args__ = (
         Index('idx_bi_connection_platform', 'platform_type', 'is_active'),
+        Index('idx_bi_connection_created', 'created_at'),
+        Index('idx_bi_connection_updated', 'updated_at'),
     )
 
     def __repr__(self):
@@ -96,6 +98,8 @@ class BIIntegration(Base):
     workspace_id: Mapped[Optional[str]] = mapped_column(String(100))
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -106,14 +110,21 @@ class BIIntegration(Base):
         Index('idx_bi_integration_active', 'is_active'),
         Index('idx_bi_integration_created', 'created_at'),
         Index('idx_bi_integration_creator', 'created_by'),
+        Index('idx_bi_integration_entity', 'entity_type', 'entity_id'),
     )
 
     # Relationships
-    creator: Mapped[Optional["User"]] = relationship("User")
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
     sync_jobs: Mapped[List["BISyncJob"]] = relationship(
         "BISyncJob",
         back_populates="integration",
         cascade="all, delete-orphan"
+    )
+    report: Mapped[Optional["Report"]] = relationship(
+        "Report",
+        primaryjoin="and_(foreign(BIIntegration.entity_type) == 'report', foreign(BIIntegration.entity_id) == Report.id)",
+        back_populates="bi_integrations",
+        passive_deletes=True
     )
 
     def __repr__(self) -> str:

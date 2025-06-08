@@ -2,8 +2,8 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.models.report import ReportType, ReportStatus
-from app.models.user import User
-from app.models.user_preferences import UserPreferences
+from app.models.core.user import User
+from app.models.core.user_preferences import UserPreferences
 from app.config.settings import get_settings
 from app.core.security import get_password_hash
 

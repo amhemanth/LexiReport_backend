@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class AuditLogResponse(BaseModel):
@@ -9,8 +9,7 @@ class AuditLogResponse(BaseModel):
     event_type: str
     event_data: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserActivityResponse(BaseModel):
     id: uuid.UUID
@@ -18,16 +17,14 @@ class UserActivityResponse(BaseModel):
     activity_type: str
     details: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SystemMetricResponse(BaseModel):
     id: uuid.UUID
     metric_type: str
     value: float
     recorded_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ErrorLogResponse(BaseModel):
     id: uuid.UUID
@@ -35,5 +32,4 @@ class ErrorLogResponse(BaseModel):
     message: str
     details: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

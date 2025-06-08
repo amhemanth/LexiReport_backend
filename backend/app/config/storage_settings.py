@@ -1,5 +1,6 @@
 from typing import List
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field, ConfigDict
 
 
 class StorageSettings(BaseSettings):
@@ -29,6 +30,8 @@ class StorageSettings(BaseSettings):
         description="Cache time-to-live in seconds"
     )
     
-    class Config:
-        env_prefix = "STORAGE_"
-        case_sensitive = True 
+    model_config = ConfigDict(case_sensitive=True, extra="allow", from_attributes=True, env_file='.env')
+
+
+def get_storage_settings() -> StorageSettings:
+    return StorageSettings() 

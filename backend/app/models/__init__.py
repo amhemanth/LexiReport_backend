@@ -1,107 +1,182 @@
-from app.db.base_class import Base
+"""
+Models package initialization.
+This module imports and exposes all models from the application.
+"""
 
 # Core models
 from app.models.core import (
-    User, UserRole, Permission, UserPermission, Password, PermissionType
+    User,
+    Role,
+    Permission,
+    UserRole,
+    UserPermission,
+    RolePermission,
+    UserPreferences,
+    UserActivity,
+    ActivityType,
+    Password
 )
 
 # Report models
 from app.models.reports import (
-    Report, ReportStatus, ReportType, ReportTypeCategory,
-    ReportMetadata, ReportContent, ReportAnalysis,
-    ReportShare, SharePermission
+    Report,
+    ReportShare,
+    ReportTemplate,
+    ReportSchedule,
+    ReportExport,
+    ReportContent,
+    ReportMetadata,
+    ReportAnalysis,
+    ReportType,
+    ReportStatus,
+    ReportTypeCategory
 )
 
 # Analytics models
 from app.models.analytics import (
-    UserActivity, EventType, SystemMetrics, ErrorLog
-)
-
-# Integration models
-from app.models.integration import (
-    BIConnection, BIDashboard, BIPlatformType, SyncStatus
-)
-
-# Processing models
-from app.models.processing import (
-    DocumentProcessingQueue, DocumentProcessingResult,
-    ProcessingStatus, ProcessingType,
-    OfflineContent, SyncQueue, ContentType, SyncAction
-)
-
-# Media models
-from app.models.media import (
-    VoiceProfile, AudioCache
+    SystemMetrics,
+    ErrorLog,
+    VoiceCommand
 )
 
 # Notification models
 from app.models.notifications import (
-    Notification, NotificationTemplate, NotificationPreference,
-    NotificationType, NotificationStatus
+    Notification,
+    NotificationTemplate,
+    NotificationPreference,
+    NotificationType,
+    NotificationStatus,
+    NotificationPriority
 )
 
 # Audit models
 from app.models.audit import (
-    AuditLog, ChangeHistory, AuditAction
+    AuditLog,
+    AuditAction
 )
 
-# File management models
+# File models
 from app.models.files import (
-    FileStorage, FileVersion, FileAccessLog,
-    FileType, FileStatus
+    FileStorage,
+    FileType,
+    FileStatus,
+    StorageType
 )
 
 # Comment models
 from app.models.comments import (
-    Comment, CommentThread, CommentMention
+    Comment,
+    CommentThread,
+    CommentMention
 )
 
 # Tag models
 from app.models.tags import (
-    Tag, EntityTag
+    Tag,
+    EntityTag
 )
 
-# Export all models
+# Processing models
+from app.models.processing import (
+    DocumentProcessing,
+    DocumentProcessingQueue,
+    DocumentProcessingResult,
+    ProcessingType,
+    OfflineContent,
+    SyncQueue,
+    ContentType,
+    SyncAction,
+    ProcessingStatus
+)
+
+# Integration models
+from app.models.integration import (
+    BIIntegration,
+    IntegrationType,
+    IntegrationStatus
+)
+
+# Media models
+from app.models.media import (
+    VoiceProfile,
+    AudioCache
+)
+
 __all__ = [
-    # Base
-    "Base",
-    
     # Core models
-    "User", "UserRole", "Permission", "UserPermission", "Password", "PermissionType",
+    "User",
+    "Role",
+    "Permission",
+    "UserRole",
+    "UserPermission",
+    "RolePermission",
+    "UserPreferences",
+    "UserActivity",
+    "ActivityType",
+    "Password",
     
     # Report models
-    "Report", "ReportStatus", "ReportType", "ReportTypeCategory",
-    "ReportMetadata", "ReportContent", "ReportAnalysis",
-    "ReportShare", "SharePermission",
+    "Report",
+    "ReportShare",
+    "ReportTemplate",
+    "ReportSchedule",
+    "ReportExport",
+    "ReportContent",
+    "ReportMetadata",
+    "ReportAnalysis",
+    "ReportType",
+    "ReportStatus",
+    "ReportTypeCategory",
     
     # Analytics models
-    "UserActivity", "EventType", "SystemMetrics", "ErrorLog",
-    
-    # Integration models
-    "BIConnection", "BIDashboard", "BIPlatformType", "SyncStatus",
-    
-    # Processing models
-    "DocumentProcessingQueue", "DocumentProcessingResult",
-    "ProcessingStatus", "ProcessingType", "ContentType", "SyncAction",
-    "OfflineContent", "SyncQueue",
-    
-    # Media models
-    "VoiceProfile", "AudioCache",
+    "SystemMetrics",
+    "ErrorLog",
+    "VoiceCommand",
     
     # Notification models
-    "Notification", "NotificationTemplate", "NotificationPreference",
-    "NotificationType", "NotificationStatus",
+    "Notification",
+    "NotificationTemplate",
+    "NotificationPreference",
+    "NotificationType",
+    "NotificationStatus",
+    "NotificationPriority",
     
     # Audit models
-    "AuditLog", "ChangeHistory", "AuditAction",
+    "AuditLog",
+    "AuditAction",
     
-    # File management models
-    "FileStorage", "FileVersion", "FileAccessLog",
-    "FileType", "FileStatus",
+    # File models
+    "FileStorage",
+    "FileType",
+    "FileStatus",
+    "StorageType",
     
     # Comment models
-    "Comment", "CommentThread", "CommentMention",
+    "Comment",
+    "CommentThread",
+    "CommentMention",
     
     # Tag models
-    "Tag", "EntityTag"
+    "Tag",
+    "EntityTag",
+    
+    # Processing models
+    "DocumentProcessing",
+    "DocumentProcessingQueue",
+    "DocumentProcessingResult",
+    "ProcessingType",
+    "OfflineContent",
+    "SyncQueue",
+    "ContentType",
+    "SyncAction",
+    "ProcessingStatus",
+    
+    # Integration models
+    "BIIntegration",
+    "IntegrationType",
+    "IntegrationStatus",
+    
+    # Media models
+    "VoiceProfile",
+    "AudioCache"
 ] 

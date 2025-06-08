@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class ReportInsightCreate(BaseModel):
@@ -22,8 +22,7 @@ class ReportInsightResponse(BaseModel):
     confidence_score: Optional[float]
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportQueryCreate(BaseModel):
     question: str
@@ -36,5 +35,4 @@ class ReportQueryResponse(BaseModel):
     response_text: Optional[str]
     confidence_score: Optional[float]
     created_at: datetime
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

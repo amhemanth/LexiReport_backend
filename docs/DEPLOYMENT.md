@@ -1,5 +1,51 @@
 # Deployment Guide
 
+## Overview
+
+LexiReport uses a modern CI/CD pipeline and cloud-native deployment for both backend and frontend, with robust monitoring and rollback strategies.
+
+## Deployment Pipeline
+
+```mermaid
+graph TD
+    Dev[Developer Push] -->|GitHub Actions| CI[CI Build/Test]
+    CI -->|Docker Build| Docker[Docker Registry]
+    Docker -->|K8s Deploy| K8s[Kubernetes Cluster]
+    K8s -->|API| Backend[FastAPI Backend]
+    K8s -->|AI| AI[AI Services]
+    K8s -->|DB| DB[PostgreSQL]
+    K8s -->|Storage| S3[S3/Object Storage]
+    K8s -->|Cache| Redis[Redis]
+    K8s -->|Monitoring| Prometheus[Prometheus/Grafana]
+    K8s -->|Logs| ELK[ELK Stack]
+    Dev -->|Vercel/Netlify| Frontend[Expo Web/Mobile]
+    Frontend -->|API| Backend
+```
+
+## Cloud Services & Environments
+- **AWS/GCP/Azure**: Kubernetes, S3, RDS/PostgreSQL, GPU nodes
+- **Vercel/Netlify**: Frontend web hosting
+- **App Store/Play Store**: Mobile app distribution
+- **Docker Hub**: Container registry
+- **Prometheus/Grafana**: Monitoring
+- **ELK/Sentry**: Logging & error tracking
+
+## Monitoring & Rollback
+- **Monitoring**: Prometheus, Grafana dashboards, Sentry for errors
+- **Backups**: Automated DB and file storage backups
+- **Rollback**: GitHub Actions and K8s support rolling deployments and rollbacks
+- **Alerting**: Slack/email alerts for failures
+
+## Achievements
+- ✅ Automated CI/CD for backend and frontend
+- ✅ Scalable, cloud-native deployment (K8s, Docker)
+- ✅ Robust monitoring and alerting
+- ✅ Easy rollback and disaster recovery
+
+---
+
+*See ARCHITECTURE.md for system diagrams and API_REFERENCE.md for endpoint details.*
+
 ## 1. Prerequisites
 
 ### 1.1 Required Accounts

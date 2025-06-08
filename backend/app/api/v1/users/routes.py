@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_active_user
 from app.core.security import verify_password, get_password_hash
 from app.core.permissions import Permission, require_permission, require_admin
-from app.models.user import User, UserRole
-from app.models.enums import UserRole
+from app.models.core.user import User, UserRole
+from app.models.core.enums import UserRole
 from app.repositories.user import UserRepository
 from app.services.user import UserService
 from app.schemas.user import (

@@ -1,3 +1,8 @@
+"""
+Alembic environment configuration.
+This module handles database migrations and seeding.
+"""
+
 import os
 import sys
 from logging.config import fileConfig
@@ -6,14 +11,16 @@ from sqlalchemy import pool
 from alembic import context
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from app.core.config import settings
+from app.db.base import Base  # Import from base.py which has all models
+from app.db.base import *  # Import all models
+from app.models import *  # Import all models from models package
+from app.db.seed import seed_database  # Import seed function
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config.settings import get_settings
-from app.db.base import Base  # Import from base.py which has all models
-from app.db.base import *  # Import all models
-from app.models import *  # Import all models from models package
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -69,7 +76,7 @@ config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
 target_metadata = Base.metadata
 
 def get_url():
-    return settings.SQLALCHEMY_DATABASE_URI
+    return str(settings.SQLALCHEMY_DATABASE_URI)
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -83,7 +90,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = str(settings.SQLALCHEMY_DATABASE_URI)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -101,24 +108,30 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    configuration = config.get_section(config.config_ini_section)
+    configuration["sqlalchemy.url"] = str(settings.SQLALCHEMY_DATABASE_URI)
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,  # Compare column types
-            compare_server_default=True,  # Compare server defaults
-            include_schemas=True,  # Include all schemas
-            include_object=lambda obj, name, type_, reflected, compare_to: True  # Include all objects
+            connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
             context.run_migrations()
+            
+            # Seed the database after migrations
+            if context.get_x_argument(as_dictionary=True).get('seed', 'false').lower() == 'true':
+                from app.db.session import SessionLocal
+                db = SessionLocal()
+                try:
+                    seed_database(db)
+                finally:
+                    db.close()
 
 if context.is_offline_mode():
     run_migrations_offline()

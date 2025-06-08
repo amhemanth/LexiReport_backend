@@ -172,4 +172,47 @@ pytest --pdb
 
 # Run tests with detailed traceback
 pytest -vv
-``` 
+```
+
+## Test Strategy Overview
+
+LexiReport uses a layered testing approach for both backend and frontend, with automated CI and coverage tracking.
+
+## Test Pyramid
+
+```mermaid
+graph TD
+    A[Unit Tests]
+    B[Integration Tests]
+    C[E2E Tests]
+    A --> B
+    B --> C
+    A -.->|Most Automated| CI[CI Pipeline]
+    B -.-> CI
+    C -.-> CI
+```
+
+- **Unit Tests**: Core logic, models, utilities (Jest, Pytest)
+- **Integration Tests**: API endpoints, DB, services (Pytest, Supertest)
+- **E2E Tests**: Full user flows (Detox, Playwright)
+
+## Automation & Coverage
+- All tests run in CI (GitHub Actions)
+- Coverage reports generated for backend and frontend
+- Aim for >90% coverage on core logic and endpoints
+
+## Achievements
+- ✅ Automated test suite for backend (Pytest)
+- ✅ Automated test suite for frontend (Jest/React Native Testing Library)
+- ✅ E2E tests for critical user flows
+- ✅ High coverage on core features
+
+## Best Practices
+- Isolate tests, use fixtures for DB
+- Clean up after each test
+- Use descriptive test names
+- Review coverage reports regularly
+
+---
+
+*See ARCHITECTURE.md for system diagrams and API_REFERENCE.md for endpoint details.* 

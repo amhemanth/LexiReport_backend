@@ -1,105 +1,201 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Boolean, DateTime, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Boolean, DateTime, Index, and_
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign, remote
 from enum import Enum as PyEnum
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
-
 from app.db.base_class import Base
-
-
-class ReportStatus(str, PyEnum):
-    """Report status enum"""
-    DRAFT = "draft"
-    PUBLISHED = "published"
-    ARCHIVED = "archived"
-    DELETED = "deleted"
-
-
-class ReportType(str, PyEnum):
-    """Report type enum"""
-    STANDARD = "standard"
-    CUSTOM = "custom"
-    TEMPLATE = "template"
-
-
-class ReportTypeCategory(str, PyEnum):
-    """Report category enum"""
-    FINANCIAL = "financial"
-    OPERATIONAL = "operational"
-    ANALYTICAL = "analytical"
-    COMPLIANCE = "compliance"
-    CUSTOM = "custom"
+from app.models.core.user import User
+from app.models.reports.enums import ReportType, ReportStatus, ReportTypeCategory
 
 
 class Report(Base):
-    """Report model"""
-    
+    """Model for reports."""
     __tablename__ = "reports"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    status: Mapped[ReportStatus] = mapped_column(SQLEnum(ReportStatus), default=ReportStatus.DRAFT)
-    type: Mapped[ReportType] = mapped_column(SQLEnum(ReportType), nullable=False)
-    category: Mapped[ReportTypeCategory] = mapped_column(SQLEnum(ReportTypeCategory), nullable=False)
-    content: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
-    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(50), default="draft")
+    type: Mapped[ReportType] = mapped_column(SQLEnum(ReportType), nullable=False, default=ReportType.STANDARD)
+    category: Mapped[ReportTypeCategory] = mapped_column(SQLEnum(ReportTypeCategory), nullable=False, default=ReportTypeCategory.ANALYTICAL)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # Add indexes for common queries
-    __table_args__ = (
-        Index('idx_report_status', 'status'),
-        Index('idx_report_type', 'type'),
-        Index('idx_report_category', 'category'),
-        Index('idx_report_created', 'created_at'),
-        Index('idx_report_creator', 'created_by'),
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), 
+        ForeignKey("users.id", ondelete="CASCADE"), 
+        nullable=False
+    )
+    updated_by: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), 
+        ForeignKey("users.id", ondelete="SET NULL"), 
+        nullable=True
+    )
+    template_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("report_templates.id", ondelete="SET NULL"),
+        nullable=True
     )
 
     # Relationships
-    creator: Mapped[Optional["User"]] = relationship("User", back_populates="reports")
-    shares: Mapped[List["ReportShare"]] = relationship(
-        "ReportShare",
+    creator: Mapped["User"] = relationship(
+        "User", 
+        foreign_keys=[created_by], 
+        back_populates="created_reports",
+        passive_deletes=True
+    )
+    updater: Mapped[Optional["User"]] = relationship(
+        "User", 
+        foreign_keys=[updated_by], 
+        back_populates="updated_reports",
+        passive_deletes=True
+    )
+    content_obj: Mapped[Optional["ReportContent"]] = relationship(
+        "ReportContent",
         back_populates="report",
-        cascade="all, delete-orphan"
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    metadata_obj: Mapped[Optional["ReportMetadata"]] = relationship(
+        "ReportMetadata",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    analysis: Mapped[Optional["ReportAnalysis"]] = relationship(
+        "ReportAnalysis",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     comments: Mapped[List["Comment"]] = relationship(
         "Comment",
+        primaryjoin="and_(foreign(Comment.entity_type) == 'report', foreign(Comment.entity_id) == Report.id)",
         back_populates="report",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    activities: Mapped[List["UserActivity"]] = relationship(
+        "UserActivity",
+        primaryjoin="and_(foreign(UserActivity.entity_type) == 'report', foreign(UserActivity.entity_id) == Report.id)",
+        back_populates="report",
+        passive_deletes=True,
+        overlaps="comment"
+    )
+    audit_logs: Mapped[List["AuditLog"]] = relationship(
+        "AuditLog",
+        primaryjoin="and_(foreign(AuditLog.entity_type) == 'report', foreign(AuditLog.entity_id) == Report.id)",
+        back_populates="report",
+        passive_deletes=True,
+        overlaps="comment"
+    )
+    tags: Mapped[List["EntityTag"]] = relationship(
+        "EntityTag",
+        primaryjoin="and_(foreign(EntityTag.entity_type) == 'report', foreign(EntityTag.entity_id) == Report.id)",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    bi_integrations: Mapped[List["BIIntegration"]] = relationship(
+        "BIIntegration",
+        primaryjoin="and_(foreign(BIIntegration.entity_type) == 'report', foreign(BIIntegration.entity_id) == Report.id)",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    shares: Mapped[List["ReportShare"]] = relationship(
+        "ReportShare",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    # New relationships
+    template: Mapped[Optional["ReportTemplate"]] = relationship(
+        "ReportTemplate",
+        back_populates="reports",
+        passive_deletes=True
+    )
+    schedules: Mapped[List["ReportSchedule"]] = relationship(
+        "ReportSchedule",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    exports: Mapped[List["ReportExport"]] = relationship(
+        "ReportExport",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification",
+        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == Report.id)",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    attachments: Mapped[List["FileStorage"]] = relationship(
+        "FileStorage",
+        primaryjoin="and_(foreign(FileStorage.entity_type) == 'report', foreign(FileStorage.entity_id) == Report.id)",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    voice_commands: Mapped[List["VoiceCommand"]] = relationship(
+        "VoiceCommand",
+        primaryjoin="and_(foreign(VoiceCommand.entity_type) == 'report', foreign(VoiceCommand.entity_id) == Report.id)",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_reports_created_by", "created_by"),
+        Index("ix_reports_updated_by", "updated_by"),
+        Index("ix_reports_status", "status"),
+        Index("ix_reports_created", "created_at"),
+        Index("ix_reports_updated", "updated_at"),
+        Index("ix_reports_template", "template_id"),
     )
 
     def __repr__(self) -> str:
-        return f"<Report {self.title}>"
+        return f"<Report(title='{self.title}', status='{self.status}')>"
 
 
 class ReportShare(Base):
-    """Report share model"""
-    
+    """Model for report sharing."""
     __tablename__ = "report_shares"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
-    shared_with: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    permission: Mapped[str] = mapped_column(String(50), nullable=False)  # view, edit, admin
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # Add indexes for common queries
-    __table_args__ = (
-        Index('idx_report_share_report', 'report_id'),
-        Index('idx_report_share_user', 'shared_with'),
-        Index('idx_report_share_expires', 'expires_at'),
-    )
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    report_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    shared_by: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shared_with: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    permission: Mapped[str] = mapped_column(String(50), default="view")
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    report: Mapped["Report"] = relationship("Report", back_populates="shares")
-    user: Mapped["User"] = relationship("User")
+    report: Mapped["Report"] = relationship("Report", back_populates="shares", passive_deletes=True)
+    sharer: Mapped["User"] = relationship("User", foreign_keys=[shared_by], back_populates="shared_reports", passive_deletes=True)
+    sharee: Mapped["User"] = relationship("User", foreign_keys=[shared_with], back_populates="received_reports", passive_deletes=True)
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_report_shares_report_id", "report_id"),
+        Index("ix_report_shares_shared_by", "shared_by"),
+        Index("ix_report_shares_shared_with", "shared_with"),
+        Index("ix_report_shares_created", "created_at"),
+        Index("ix_report_shares_expires", "expires_at"),
+    )
 
     def __repr__(self) -> str:
-        return f"<ReportShare {self.report_id}:{self.shared_with}>" 
+        return f"<ReportShare(report_id={self.report_id}, shared_with={self.shared_with})>" 

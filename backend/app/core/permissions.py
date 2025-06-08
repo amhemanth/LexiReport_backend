@@ -5,8 +5,8 @@ from functools import wraps
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.models.user import User
-from app.models.enums import UserRole
+from app.models.core.user import User
+from app.models.core.enums import UserRole
 from app.db.session import get_db
 from app.core.deps import get_current_user, get_current_active_user
 from app.core.exceptions import PermissionException

@@ -1,5 +1,6 @@
 from typing import List, Optional
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field, ConfigDict
 
 
 class AISettings(BaseSettings):
@@ -51,6 +52,7 @@ class AISettings(BaseSettings):
         description="Cache time-to-live in seconds"
     )
     
-    class Config:
-        env_prefix = "AI_"
-        case_sensitive = True 
+    model_config = ConfigDict(extra='allow', from_attributes=True, env_file='.env') 
+
+def get_ai_settings() -> AISettings:
+    return AISettings() 

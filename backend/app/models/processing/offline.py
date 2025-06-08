@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Boolean, DateTime, Index
+from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Boolean, DateTime, Index, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum as PyEnum
+import uuid
 
 from app.db.base_class import Base
 from app.models.core.user import User
@@ -40,12 +41,13 @@ class OfflineContent(Base):
     
     __tablename__ = "offline_content"
 
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[ContentType] = mapped_column(SQLEnum(ContentType), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     sync_status: Mapped[ProcessingStatus] = mapped_column(SQLEnum(ProcessingStatus), default=ProcessingStatus.PENDING)
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -58,7 +60,7 @@ class OfflineContent(Base):
     )
 
     # Relationships
-    creator: Mapped[Optional["User"]] = relationship("User")
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
     sync_queue: Mapped[List["SyncQueue"]] = relationship(
         "SyncQueue",
         back_populates="content",

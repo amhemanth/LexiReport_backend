@@ -4,14 +4,121 @@
 
 ```mermaid
 graph TD
-    A[Client Apps] --> B[API Gateway]
-    B --> C[Backend Services]
-    C --> D[AI Services]
-    C --> E[Database]
-    C --> F[File Storage]
-    D --> G[AI Models]
-    D --> H[Cache Layer]
+    A[Mobile/Web Frontend (Expo/React Native)] -->|REST API| B[API Gateway (FastAPI)]
+    B -->|Business Logic| C[Backend Services]
+    C -->|AI Calls| D[AI Services]
+    C -->|DB Access| E[PostgreSQL Database]
+    C -->|File Ops| F[Object/File Storage]
+    C -->|Notifications| G[Notification Service]
+    D -->|Model Inference| H[AI Models]
+    D -->|Cache| I[Redis]
 ```
+
+## Feature Coverage
+
+```mermaid
+graph LR
+    subgraph Frontend
+      FE1[Authentication] --> FE2[Report Management]
+      FE2 --> FE3[AI Insights]
+      FE3 --> FE4[Voice/Audio]
+      FE4 --> FE5[BI Integration]
+      FE5 --> FE6[Q&A]
+      FE6 --> FE7[Offline Mode]
+      FE7 --> FE8[Notifications]
+      FE8 --> FE9[User Preferences]
+      FE9 --> FE10[Collaboration]
+    end
+    subgraph Backend
+      BE1[Auth API] --> BE2[Report API]
+      BE2 --> BE3[AI API]
+      BE3 --> BE4[BI API]
+      BE4 --> BE5[Notification API]
+      BE5 --> BE6[Collaboration API]
+    end
+    FE1 -.-> BE1
+    FE2 -.-> BE2
+    FE3 -.-> BE3
+    FE4 -.-> BE3
+    FE5 -.-> BE4
+    FE6 -.-> BE3
+    FE7 -.-> BE2
+    FE8 -.-> BE5
+    FE9 -.-> BE1
+    FE10 -.-> BE6
+```
+
+- **Solid lines**: Implemented
+- **Dashed lines**: In progress or planned
+
+## Folder Structure (2024)
+
+### Frontend
+```
+frontend/
+├── app/           # Expo Router app directory
+│   ├── (auth)/    # Authentication screens
+│   ├── (tabs)/    # Main app tabs (profile, reports, upload, etc.)
+│   └── _layout.tsx
+├── components/    # Reusable components (Header, PermissionGate, etc.)
+├── hooks/         # Custom React hooks
+├── services/      # API and business logic
+├── store/         # Zustand state management
+├── models/        # TypeScript models/types
+├── utils/         # Helper functions
+├── config/        # App configuration
+├── constants/     # Static values (permissions, colors)
+└── assets/        # Images and static assets
+```
+
+### Backend
+```
+backend/
+├── app/
+│   ├── api/         # API endpoints (v1)
+│   ├── core/        # Core logic (security, exceptions)
+│   ├── models/      # SQLAlchemy models
+│   ├── schemas/     # Pydantic schemas
+│   ├── services/    # Business logic
+│   └── utils/       # Helper functions
+├── tests/           # Test files
+└── alembic/         # Database migrations
+```
+
+## Permissions & Roles (RBAC)
+
+```mermaid
+graph TD
+    Admin[Admin]
+    User[User]
+    Guest[Guest]
+    Admin -->|manage_users| API
+    Admin -->|read_users| API
+    Admin -->|write_users| API
+    User -->|api_access| API
+    User -->|read_own| API
+    Guest -->|register| API
+```
+
+- **Admin**: Full access (manage users, all reports, settings)
+- **User**: Access to own reports, profile, AI features
+- **Guest**: Registration, limited access
+
+## Achievements (2024)
+
+- ✅ Modern, cross-platform frontend (Expo/React Native)
+- ✅ Secure authentication (JWT, RBAC)
+- ✅ Report upload, management, and AI-powered insights
+- ✅ Voice-over, Q&A, and BI integration (MVP)
+- ✅ Offline mode, notifications, and user preferences
+- ✅ Collaboration (sharing, comments, tags)
+- ✅ Robust backend (FastAPI, PostgreSQL, Alembic)
+- ✅ Modular AI services (summarization, TTS, Q&A)
+- ✅ CI/CD, monitoring, and scalable deployment
+
+---
+
+*See API_REFERENCE.md for endpoint details and AI_IMPLEMENTATION_PLAN.md for AI pipeline.*
 
 ## 1. Development Architecture
 

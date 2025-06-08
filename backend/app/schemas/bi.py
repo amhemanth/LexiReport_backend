@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class BIConnectionCreate(BaseModel):
@@ -16,8 +16,7 @@ class BIConnectionResponse(BaseModel):
     name: Optional[str]
     created_at: datetime
     updated_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BIDashboardResponse(BaseModel):
     id: uuid.UUID
@@ -25,8 +24,7 @@ class BIDashboardResponse(BaseModel):
     name: str
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BIReportResponse(BaseModel):
     id: uuid.UUID
@@ -34,8 +32,7 @@ class BIReportResponse(BaseModel):
     name: str
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SyncJobResponse(BaseModel):
     id: uuid.UUID
@@ -44,5 +41,4 @@ class SyncJobResponse(BaseModel):
     started_at: datetime
     finished_at: Optional[datetime]
     details: Optional[Dict[str, Any]]
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

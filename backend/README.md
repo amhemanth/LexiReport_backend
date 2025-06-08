@@ -1,8 +1,54 @@
-# FastAPI Backend
+# LexiReport Backend
 
-A modern, secure, and scalable FastAPI backend with user authentication and report management.
+A modern, secure, and scalable FastAPI backend powering LexiReport's AI-driven document analysis platform.
 
-## Features
+## Overview
+- 🔐 JWT authentication & RBAC
+- 🗂️ User, report, and file management
+- 📊 AI-powered insights, Q&A, and voice features
+- 📨 Notifications, offline support, collaboration
+- 🏗️ Modular, service-oriented architecture
+
+## Project Structure
+```
+backend/
+├── app/
+│   ├── api/         # API endpoints (v1)
+│   ├── core/        # Core logic (security, exceptions)
+│   ├── models/      # SQLAlchemy models
+│   ├── schemas/     # Pydantic schemas
+│   ├── services/    # Business logic
+│   └── utils/       # Helper functions
+├── tests/           # Test files
+└── alembic/         # Database migrations
+```
+
+## Documentation
+- [Architecture](../docs/ARCHITECTURE.md)
+- [API Reference](../docs/API_REFERENCE.md)
+- [AI Implementation](../docs/AI_IMPLEMENTATION_PLAN.md)
+- [Deployment](../docs/DEPLOYMENT.md)
+- [Testing](../docs/testing.md)
+
+## Quickstart
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.template .env  # Edit .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+- API docs: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
+
+## Achievements (2025)
+- ✅ Secure authentication (JWT, RBAC)
+- ✅ User, report, and file management
+- ✅ AI-powered insights, Q&A, and voice features
+- ✅ Notifications, offline support, and collaboration
+- ✅ Modular, service-oriented architecture
+- ✅ Automated tests and CI/CD
 
 - User authentication with JWT tokens
 - Password hashing with bcrypt

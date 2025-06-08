@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config.settings import get_settings
 from app.db.session import get_db
-from app.models.user import User
+from app.models.core.user import User
 from app.repositories.user import user_repository
 
 settings = get_settings()

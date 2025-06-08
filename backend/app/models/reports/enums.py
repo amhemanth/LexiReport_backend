@@ -1,30 +1,30 @@
-from enum import Enum as PyEnum
+"""Report-related enums."""
+from enum import Enum
 
-class ReportStatus(str, PyEnum):
-    """Report status enum"""
+class ReportType(str, Enum):
+    """Report type enum."""
+    STANDARD = "standard"
+    ANALYTICAL = "analytical"
+    DASHBOARD = "dashboard"
+    CUSTOM = "custom"
+
+class ReportStatus(str, Enum):
+    """Status of a report."""
     DRAFT = "draft"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    PUBLISHED = "published"
     ARCHIVED = "archived"
+    DELETED = "deleted"
 
-class ReportType(str, PyEnum):
-    """Report type enum"""
+class ReportTypeCategory(str, Enum):
+    """Categories of report types."""
     FINANCIAL = "financial"
     OPERATIONAL = "operational"
-    STRATEGIC = "strategic"
+    ANALYTICAL = "analytical"
     COMPLIANCE = "compliance"
     CUSTOM = "custom"
 
-class ReportTypeCategory(str, PyEnum):
-    """Report category enum"""
-    MONTHLY = "monthly"
-    QUARTERLY = "quarterly"
-    ANNUAL = "annual"
-    AD_HOC = "ad_hoc"
-    REGULAR = "regular"
-
-class SharePermission(str, PyEnum):
-    """Share permission enum"""
-    READ = "read"
-    WRITE = "write"
+class SharePermission(str, Enum):
+    """Permissions for shared reports."""
+    VIEW = "view"
+    EDIT = "edit"
     ADMIN = "admin" 

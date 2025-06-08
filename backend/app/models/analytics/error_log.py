@@ -1,5 +1,6 @@
-from sqlalchemy import String, Text, JSON
+from sqlalchemy import String, Text, JSON, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
 
 from app.db.base_class import Base
 
@@ -12,6 +13,13 @@ class ErrorLog(Base):
     error_message: Mapped[str] = mapped_column(Text, nullable=False)
     stack_trace: Mapped[str] = mapped_column(Text, nullable=True)
     context_data: Mapped[dict] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Add indexes for common queries
+    __table_args__ = (
+        Index('idx_error_log_type', 'error_type'),
+        Index('idx_error_log_created', 'created_at'),
+    )
     
     def __repr__(self) -> str:
         return f"<ErrorLog {self.error_type}>" 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 
 class ReportCreate(BaseModel):
@@ -28,8 +28,7 @@ class ReportResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportTypeResponse(BaseModel):
     id: uuid.UUID
@@ -38,8 +37,7 @@ class ReportTypeResponse(BaseModel):
     supported_formats: List[str]
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportStatusResponse(BaseModel):
     id: uuid.UUID
@@ -47,8 +45,7 @@ class ReportStatusResponse(BaseModel):
     description: Optional[str]
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportVersionResponse(BaseModel):
     id: uuid.UUID
@@ -58,8 +55,7 @@ class ReportVersionResponse(BaseModel):
     changes_description: Optional[str]
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportInsightResponse(BaseModel):
     id: uuid.UUID
@@ -70,8 +66,7 @@ class ReportInsightResponse(BaseModel):
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportShareResponse(BaseModel):
     id: uuid.UUID
@@ -82,5 +77,4 @@ class ReportShareResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

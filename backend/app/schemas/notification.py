@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import uuid
 
 class NotificationCreate(BaseModel):
@@ -16,8 +16,7 @@ class NotificationResponse(BaseModel):
     metadata: Optional[Dict[str, Any]]
     is_read: bool
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class NotificationPreferenceUpdate(BaseModel):
     type: str
@@ -28,5 +27,4 @@ class NotificationPreferenceResponse(BaseModel):
     user_id: uuid.UUID
     type: str
     enabled: bool
-    class Config:
-        orm_mode = True 
+    model_config = ConfigDict(from_attributes=True) 

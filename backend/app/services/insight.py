@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 import uuid
 
 from app.models.report import Report, ReportInsight, ReportQuery
-from app.models.user import User
-from app.schemas.report import ReportInsightCreate, ReportInsightResponse, ReportQueryCreate
+from app.models.core.user import User
+from app.schemas.insight import ReportInsightCreate, ReportInsightResponse, ReportQueryCreate
 from app.config.ai_settings import get_ai_settings
 from app.repositories.insight import report_insight_repository, report_query_repository
 from app.services.ai_service import AIService

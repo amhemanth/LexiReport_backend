@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, Union
-from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, validator
+from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, validator, ConfigDict
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -59,10 +59,7 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
-        extra = "allow"  # Allow extra fields in the settings
+    model_config = ConfigDict(extra='allow', from_attributes=True, env_file='.env')
 
 def get_settings() -> Settings:
     return Settings() 

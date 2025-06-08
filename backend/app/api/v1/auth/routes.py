@@ -5,7 +5,7 @@ from app.core.deps import get_db
 from app.schemas.auth import UserCreate, UserLogin, Token, RegistrationResponse
 from app.services.auth import AuthService
 from app.repositories.user import UserRepository
-from app.models.user import User
+from app.models.core.user import User
 
 import uuid
 
