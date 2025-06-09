@@ -14,13 +14,24 @@ from app.schemas.voice import (
     VoiceCommandCreate, VoiceCommandUpdate, VoiceCommandResponse
 )
 from app.core.exceptions import NotFoundException, PermissionException
+from app.config.settings import get_settings
 import uuid
 import hashlib
 import os
 from datetime import datetime
 
+settings = get_settings()
+
 class VoiceService:
     """Service for managing voice profiles, audio caching, and voice commands."""
+
+    def get_supported_languages(self) -> List[str]:
+        """Get list of supported languages."""
+        return [lang.strip() for lang in settings.SUPPORTED_LANGUAGES.split(",")]
+
+    def validate_language(self, language: str) -> bool:
+        """Validate if language is supported."""
+        return language in self.get_supported_languages()
 
     def get_voice_profiles_by_user(
         self, db: Session, *, user_id: uuid.UUID, skip: int = 0, limit: int = 100

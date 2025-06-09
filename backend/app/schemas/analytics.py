@@ -103,4 +103,51 @@ class VoiceCommandFilter(BaseSchema):
     entity_type: Optional[str] = None
     entity_id: Optional[uuid.UUID] = None
     start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None 
+    end_date: Optional[datetime] = None
+
+class TimeRangeQuery(BaseModel):
+    start_date: datetime = Field(..., description="Start date for analytics")
+    end_date: datetime = Field(..., description="End date for analytics")
+
+class MetricValue(BaseModel):
+    value: float = Field(..., description="Metric value")
+    change: float = Field(0, description="Change from previous period")
+    trend: str = Field("neutral", description="Trend direction (up, down, neutral)")
+
+class UserActivityMetrics(BaseModel):
+    total_users: int = Field(0, description="Total number of users")
+    active_users: int = Field(0, description="Number of active users")
+    new_users: int = Field(0, description="Number of new users")
+    returning_users: int = Field(0, description="Number of returning users")
+    average_session_duration: float = Field(0, description="Average session duration in seconds")
+    top_actions: List[Dict[str, Any]] = Field([], description="Top user actions")
+
+class ContentMetrics(BaseModel):
+    total_views: int = Field(0, description="Total number of views")
+    unique_views: int = Field(0, description="Number of unique views")
+    average_time_spent: float = Field(0, description="Average time spent in seconds")
+    engagement_rate: float = Field(0, description="Engagement rate as percentage")
+    top_content: List[Dict[str, Any]] = Field([], description="Top performing content")
+
+class AnalyticsResponse(BaseModel):
+    user_metrics: UserActivityMetrics
+    content_metrics: ContentMetrics
+    time_period: str
+    last_updated: datetime
+
+class UserActivityResponse(BaseModel):
+    user_id: int
+    username: str
+    activity_count: int
+    last_active: datetime
+    top_actions: List[Dict[str, Any]]
+    session_duration: float
+
+class ContentAnalyticsResponse(BaseModel):
+    content_type: Optional[str]
+    total_items: int
+    total_views: int
+    total_engagement: int
+    average_time_spent: float
+    top_performers: List[Dict[str, Any]]
+    trends: Dict[str, List[Dict[str, Any]]] 

@@ -10,8 +10,6 @@ from app.api.v1.comments.routes import router as comments_router
 from app.api.v1.audit.routes import router as audit_router
 from app.api.v1.bi.routes import router as bi_router
 from app.api.v1.offline.routes import router as offline_router
-from app.api.v1.tags.routes import router as tags_router
-from app.api.v1.analytics.routes import router as analytics_router
 from app.api.v1.ai.routes import router as ai_router
 
 api_router = APIRouter()
@@ -28,6 +26,4 @@ api_router.include_router(comments_router, prefix="/comments", tags=["Comments"]
 api_router.include_router(audit_router, prefix="/audit", tags=["Audit"])
 api_router.include_router(bi_router, prefix="/bi", tags=["Business Intelligence"])
 api_router.include_router(offline_router, prefix="/offline", tags=["Offline Content"])
-api_router.include_router(tags_router, prefix="/tags", tags=["Tags"])
-api_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 api_router.include_router(ai_router, prefix="/ai", tags=["AI Services"]) 

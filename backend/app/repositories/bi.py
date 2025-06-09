@@ -2,11 +2,11 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 import uuid
 
-from app.models.integration.bi_integration import BIConnection, BIDashboard, BIReport, SyncJob
+from app.models.integration.bi_integration import BIConnection, BIDashboard, BISyncJob, BIIntegration
 from app.schemas.bi import (
     BIConnectionCreate, BIConnectionUpdate,
     BIDashboardCreate, BIDashboardUpdate,
-    BIReportCreate, BIReportUpdate,
+    BIIntegrationCreate, BIIntegrationUpdate,
     SyncJobCreate, SyncJobUpdate
 )
 from .base import BaseRepository
@@ -57,68 +57,58 @@ class BIDashboardRepository(
             skip=skip, limit=limit
         )
 
-class BIReportRepository(
-    BaseRepository[BIReport, BIReportCreate, BIReportUpdate]
-):
-    """Repository for BIReport model."""
-
-    def get_by_dashboard(
-        self, db: Session, *, dashboard_id: uuid.UUID,
-        skip: int = 0, limit: int = 100
-    ) -> List[BIReport]:
-        """Get reports by dashboard."""
-        return self.get_multi_by_field(
-            db, field="dashboard_id", value=dashboard_id,
-            skip=skip, limit=limit
-        )
-
-    def get_by_name(
-        self, db: Session, *, name: str,
-        skip: int = 0, limit: int = 100
-    ) -> List[BIReport]:
-        """Get reports by name."""
-        return self.get_multi_by_field(
-            db, field="name", value=name,
-            skip=skip, limit=limit
-        )
-
 class SyncJobRepository(
-    BaseRepository[SyncJob, SyncJobCreate, SyncJobUpdate]
+    BaseRepository[BISyncJob, SyncJobCreate, SyncJobUpdate]
 ):
-    """Repository for SyncJob model."""
+    """Repository for BISyncJob model."""
 
-    def get_by_connection(
-        self, db: Session, *, connection_id: uuid.UUID,
+    def get_by_integration(
+        self, db: Session, *, integration_id: uuid.UUID,
         skip: int = 0, limit: int = 100
-    ) -> List[SyncJob]:
-        """Get sync jobs by connection."""
+    ) -> List[BISyncJob]:
+        """Get sync jobs by integration."""
         return self.get_multi_by_field(
-            db, field="connection_id", value=connection_id,
+            db, field="integration_id", value=integration_id,
             skip=skip, limit=limit
         )
 
     def get_by_status(
         self, db: Session, *, status: str,
         skip: int = 0, limit: int = 100
-    ) -> List[SyncJob]:
+    ) -> List[BISyncJob]:
         """Get sync jobs by status."""
         return self.get_multi_by_field(
-            db, field="status", value=status,
+            db, field="sync_status", value=status,
             skip=skip, limit=limit
         )
 
-    def get_by_job_type(
-        self, db: Session, *, job_type: str,
+class BIIntegrationRepository(
+    BaseRepository[BIIntegration, BIIntegrationCreate, BIIntegrationUpdate]
+):
+    """Repository for BIIntegration model."""
+
+    def get_by_platform_type(
+        self, db: Session, *, platform_type: str,
         skip: int = 0, limit: int = 100
-    ) -> List[SyncJob]:
-        """Get sync jobs by job type."""
+    ) -> List[BIIntegration]:
+        """Get integrations by platform type."""
         return self.get_multi_by_field(
-            db, field="job_type", value=job_type,
+            db, field="platform_type", value=platform_type,
+            skip=skip, limit=limit
+        )
+
+    def get_by_entity(
+        self, db: Session, *, entity_type: str, entity_id: uuid.UUID,
+        skip: int = 0, limit: int = 100
+    ) -> List[BIIntegration]:
+        """Get integrations by entity."""
+        return self.get_multi_by_field(
+            db, field="entity_type", value=entity_type,
             skip=skip, limit=limit
         )
 
 # Create repository instances
 bi_connection_repository = BIConnectionRepository(BIConnection)
 bi_dashboard_repository = BIDashboardRepository(BIDashboard)
-bi_report_repository = BIReportRepository(BIReport)
-sync_job_repository = SyncJobRepository(SyncJob) 
+bi_integration_repository = BIIntegrationRepository(BIIntegration)
+sync_job_repository = SyncJobRepository(BISyncJob) 

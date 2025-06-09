@@ -110,4 +110,53 @@ class InsightGenerationList(BaseSchema):
     total: int
     page: int
     size: int
-    pages: int 
+    pages: int
+
+class AIRequest(BaseModel):
+    """Schema for AI processing requests."""
+    text: str = Field(..., description="Text to process")
+    model: Optional[str] = Field(None, description="Model to use for processing")
+    temperature: Optional[float] = Field(None, description="Temperature for generation")
+    max_tokens: Optional[int] = Field(None, description="Maximum tokens to generate")
+    top_p: Optional[float] = Field(None, description="Top p for nucleus sampling")
+    frequency_penalty: Optional[float] = Field(None, description="Frequency penalty")
+    presence_penalty: Optional[float] = Field(None, description="Presence penalty")
+    stop: Optional[List[str]] = Field(None, description="Stop sequences")
+    timeout: Optional[int] = Field(None, description="Request timeout in seconds")
+    retry_attempts: Optional[int] = Field(None, description="Number of retry attempts")
+    retry_delay: Optional[int] = Field(None, description="Delay between retries in seconds")
+
+class AIResponse(BaseModel):
+    """Schema for AI processing responses."""
+    id: uuid.UUID = Field(..., description="Response ID")
+    text: str = Field(..., description="Generated text")
+    model: str = Field(..., description="Model used")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    processing_time: float = Field(..., description="Processing time in seconds")
+    tokens_used: int = Field(..., description="Number of tokens used")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+class AIError(BaseModel):
+    """Schema for AI processing errors."""
+    error: str = Field(..., description="Error message")
+    code: str = Field(..., description="Error code")
+    details: Optional[Dict[str, Any]] = Field(None, description="Error details")
+
+class AICacheEntry(BaseModel):
+    """Schema for AI cache entries."""
+    id: uuid.UUID = Field(..., description="Cache entry ID")
+    request_hash: str = Field(..., description="Hash of the request")
+    response: AIResponse = Field(..., description="Cached response")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    expires_at: datetime = Field(..., description="Expiration timestamp")
+    hits: int = Field(..., description="Number of cache hits")
+
+class AIModelInfo(BaseModel):
+    """Schema for AI model information."""
+    name: str = Field(..., description="Model name")
+    description: str = Field(..., description="Model description")
+    version: str = Field(..., description="Model version")
+    capabilities: List[str] = Field(..., description="Model capabilities")
+    max_tokens: int = Field(..., description="Maximum tokens supported")
+    is_available: bool = Field(..., description="Whether the model is available")
+    last_updated: datetime = Field(..., description="Last update timestamp") 

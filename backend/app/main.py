@@ -1,18 +1,22 @@
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.orm import Session
 from app.api.v1.api import api_router
 from app.config.settings import get_settings
+from app.db.session import get_db
 from app.core.handlers import (
     validation_exception_handler,
     general_exception_handler,
     lexireport_exception_handler,
+    ai_processing_exception_handler,
     base_validation_handler,
     base_auth_handler,
     base_permission_handler,
-    base_not_found_handler
+    base_not_found_handler,
+    http_exception_handler
 )
 from app.core.middleware import setup_middleware
 from app.core.exceptions import (
@@ -23,6 +27,7 @@ from app.core.exceptions import (
     NotFoundException,
     AIProcessingError
 )
+from app.core.model_cache import precache_models
 
 settings = get_settings()
 
@@ -41,8 +46,9 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# Pre-cache models at server startup
+logger.info("Starting model pre-caching...")
+precache_models()
 
 # Set up middleware
 setup_middleware(app)
@@ -57,7 +63,8 @@ app.add_middleware(
 )
 
 # Add exception handlers
-app.add_exception_handler(ValidationException, base_validation_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(ValidationException, validation_exception_handler)
 app.add_exception_handler(AuthenticationException, base_auth_handler)
 app.add_exception_handler(PermissionException, base_permission_handler)
 app.add_exception_handler(NotFoundException, base_not_found_handler)
@@ -82,6 +89,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 @app.get("/")
-def root():
-    """Redirect to API documentation."""
-    return RedirectResponse(url="/docs") 
+async def root():
+    """Root endpoint."""
+    return {"message": "Welcome to the API"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_STR) 

@@ -1,5 +1,5 @@
 import logging
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.core.exceptions import (
@@ -8,6 +8,7 @@ from app.core.exceptions import (
     AuthenticationException,
     PermissionException,
     NotFoundException,
+    AIProcessingError,
     validation_exception_handler as base_validation_handler,
     authentication_exception_handler as base_auth_handler,
     permission_exception_handler as base_permission_handler,
@@ -15,6 +16,14 @@ from app.core.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions."""
+    logger.error(f"HTTP error: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors."""
@@ -45,13 +54,27 @@ async def lexireport_exception_handler(request: Request, exc: LexiReportExceptio
         content={"detail": str(exc.detail) if isinstance(exc.detail, (ValueError, str)) else exc.detail}
     )
 
+async def ai_processing_exception_handler(request: Request, exc: AIProcessingError):
+    """Handle AI processing exceptions."""
+    logger.error(f"AI processing error: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": str(exc.detail) if isinstance(exc.detail, (ValueError, str)) else exc.detail,
+            "error_type": "ai_processing_error",
+            "error_code": exc.error_code if hasattr(exc, 'error_code') else None
+        }
+    )
+
 # Export all handlers
 __all__ = [
     'validation_exception_handler',
     'general_exception_handler',
     'lexireport_exception_handler',
+    'ai_processing_exception_handler',
     'base_validation_handler',
     'base_auth_handler',
     'base_permission_handler',
-    'base_not_found_handler'
+    'base_not_found_handler',
+    'http_exception_handler'
 ] 

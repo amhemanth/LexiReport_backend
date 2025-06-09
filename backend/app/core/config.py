@@ -47,9 +47,9 @@ class Settings(BaseSettings):
         )
 
     # Project Configuration
-    PROJECT_NAME: str
-    VERSION: str
-    DESCRIPTION: str
+    PROJECT_NAME: str = "AI Report Analyzer"
+    VERSION: str = "1.0.0"
+    DESCRIPTION: str = "LexiReport Backend API"
     
     # File Upload Configuration
     UPLOAD_DIR: Path

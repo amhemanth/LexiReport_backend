@@ -3,19 +3,20 @@ from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 import uuid
+from fastapi import HTTPException
 
 from app.models.reports import Report, ReportInsight, ReportQuery
 from app.models.core.user import User
 from app.schemas.insight import (
     ReportInsightCreate, ReportInsightResponse, ReportInsightUpdate,
-    ReportQueryCreate, ReportQueryResponse
+    ReportQueryCreate, ReportQueryResponse, InsightCreate, InsightUpdate, InsightResponse
 )
-from app.config.ai_settings import get_ai_settings
-from app.repositories.insight import report_insight_repository, report_query_repository
+from app.config.settings import get_settings
+from app.repositories.insight import report_insight_repository, report_query_repository, insight_repository
 from app.services.ai_service import AIService
 from app.core.exceptions import NotFoundError, ValidationError
 
-ai_settings = get_ai_settings()
+settings = get_settings()
 ai_service = AIService()
 
 class InsightService:
@@ -23,6 +24,8 @@ class InsightService:
 
     def __init__(self, db: Session):
         self.db = db
+        self.cache_dir = settings.CACHE_DIR
+        self.cache_ttl = settings.CACHE_TTL
 
     async def generate_insights(
         self,
@@ -255,5 +258,63 @@ class InsightService:
         self.db.refresh(query)
 
         return ReportQueryResponse.from_orm(query)
+
+    async def create_insight(
+        self,
+        insight: InsightCreate
+    ) -> InsightResponse:
+        """Create a new insight."""
+        try:
+            db_insight = await insight_repository.create(self.db, obj_in=insight)
+            return InsightResponse.model_validate(db_insight)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating insight: {str(e)}"
+            )
+
+    async def get_insight(
+        self,
+        insight_id: uuid.UUID
+    ) -> InsightResponse:
+        """Get an insight by ID."""
+        insight = await insight_repository.get(self.db, id=insight_id)
+        if not insight:
+            raise HTTPException(status_code=404, detail="Insight not found")
+        return InsightResponse.model_validate(insight)
+
+    async def update_insight(
+        self,
+        insight_id: uuid.UUID,
+        insight: InsightUpdate
+    ) -> InsightResponse:
+        """Update an insight."""
+        db_insight = await insight_repository.get(self.db, id=insight_id)
+        if not db_insight:
+            raise HTTPException(status_code=404, detail="Insight not found")
+        
+        updated_insight = await insight_repository.update(
+            self.db, db_obj=db_insight, obj_in=insight
+        )
+        return InsightResponse.model_validate(updated_insight)
+
+    async def delete_insight(
+        self,
+        insight_id: uuid.UUID
+    ) -> None:
+        """Delete an insight."""
+        db_insight = await insight_repository.get(self.db, id=insight_id)
+        if not db_insight:
+            raise HTTPException(status_code=404, detail="Insight not found")
+        
+        await insight_repository.remove(self.db, id=insight_id)
+
+    async def get_insights_by_report(
+        self,
+        report_id: uuid.UUID
+    ) -> List[InsightResponse]:
+        """Get all insights for a report."""
+        insights = await insight_repository.get_multi_by_report(self.db, report_id=report_id)
+        return [InsightResponse.model_validate(insight) for insight in insights]
 
 insight_service = InsightService() 

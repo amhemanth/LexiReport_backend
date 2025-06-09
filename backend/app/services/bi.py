@@ -5,7 +5,7 @@ import uuid
 from app.repositories.bi import (
     bi_connection_repository,
     bi_dashboard_repository,
-    bi_report_repository,
+    bi_integration_repository,
     sync_job_repository
 )
 from app.models.integration.bi_integration import (
@@ -17,7 +17,7 @@ from app.models.integration.bi_integration import (
 from app.schemas.bi import (
     BIConnectionCreate, BIConnectionUpdate,
     BIDashboardCreate, BIDashboardUpdate,
-    BIReportCreate, BIReportUpdate,
+    BIIntegrationCreate, BIIntegrationUpdate,
     SyncJobCreate, SyncJobUpdate
 )
 from app.core.exceptions import NotFoundException
@@ -113,37 +113,37 @@ class BIService:
         self, db: Session, *, id: uuid.UUID
     ) -> Optional[BIIntegration]:
         """Get a BI integration by ID."""
-        return bi_report_repository.get(db, id=id)
+        return bi_integration_repository.get(db, id=id)
 
     def get_integrations_by_platform(
         self, db: Session, *, platform_type: str,
         skip: int = 0, limit: int = 100
     ) -> List[BIIntegration]:
         """Get integrations by platform type."""
-        return bi_report_repository.get_by_platform_type(
+        return bi_integration_repository.get_by_platform_type(
             db, platform_type=platform_type, skip=skip, limit=limit
         )
 
     def create_integration(
-        self, db: Session, *, obj_in: BIReportCreate
+        self, db: Session, *, obj_in: BIIntegrationCreate
     ) -> BIIntegration:
         """Create a new BI integration."""
-        return bi_report_repository.create(db, obj_in=obj_in)
+        return bi_integration_repository.create(db, obj_in=obj_in)
 
     def update_integration(
-        self, db: Session, *, id: uuid.UUID, obj_in: BIReportUpdate
+        self, db: Session, *, id: uuid.UUID, obj_in: BIIntegrationUpdate
     ) -> BIIntegration:
         """Update a BI integration."""
-        db_obj = bi_report_repository.get(db, id=id)
+        db_obj = bi_integration_repository.get(db, id=id)
         if not db_obj:
             raise NotFoundException(f"BI integration with id {id} not found")
-        return bi_report_repository.update(db, db_obj=db_obj, obj_in=obj_in)
+        return bi_integration_repository.update(db, db_obj=db_obj, obj_in=obj_in)
 
     def delete_integration(
         self, db: Session, *, id: uuid.UUID
     ) -> BIIntegration:
         """Delete a BI integration."""
-        return bi_report_repository.delete(db, id=id)
+        return bi_integration_repository.delete(db, id=id)
 
     # Sync job methods
     def get_sync_job(

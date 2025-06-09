@@ -9,7 +9,12 @@ from app.schemas.ai import (
     QuestionAnswerCreate, QuestionAnswerUpdate, QuestionAnswerResponse, QuestionAnswerList,
     InsightGenerationCreate, InsightGenerationUpdate, InsightGenerationResponse, InsightGenerationList
 )
-from app.services.ai import ai_service
+from app.services.ai_service import ai_service
+from app.repositories.ai import (
+    ai_analysis_repository,
+    question_answer_repository,
+    insight_generation_repository
+)
 import uuid
 
 router = APIRouter()
@@ -28,17 +33,21 @@ async def list_analyses(
 ):
     """List AI analyses with optional filtering."""
     try:
+        filters = {}
+        if report_id:
+            filters["report_id"] = report_id
+        if status:
+            filters["status"] = status
+        if analysis_type:
+            filters["analysis_type"] = analysis_type
+
         analyses = await ai_analysis_repository.get_multi(
             db,
             skip=skip,
             limit=limit,
-            filters={
-                "report_id": report_id,
-                "status": status,
-                "analysis_type": analysis_type
-            }
+            filters=filters
         )
-        total = await ai_analysis_repository.count(db)
+        total = await ai_analysis_repository.count(db, filters=filters)
         return AIAnalysisList(
             items=analyses,
             total=total,
@@ -106,16 +115,19 @@ async def list_question_answers(
 ):
     """List question-answer entries with optional filtering."""
     try:
+        filters = {}
+        if context:
+            filters["context"] = context
+        if min_confidence is not None:
+            filters["min_confidence"] = min_confidence
+
         qa_entries = await question_answer_repository.get_multi(
             db,
             skip=skip,
             limit=limit,
-            filters={
-                "context": context,
-                "min_confidence": min_confidence
-            }
+            filters=filters
         )
-        total = await question_answer_repository.count(db)
+        total = await question_answer_repository.count(db, filters=filters)
         return QuestionAnswerList(
             items=qa_entries,
             total=total,
@@ -184,17 +196,21 @@ async def list_insights(
 ):
     """List insight generation entries with optional filtering."""
     try:
+        filters = {}
+        if report_id:
+            filters["report_id"] = report_id
+        if status:
+            filters["status"] = status
+        if insight_types:
+            filters["insight_types"] = insight_types
+
         insights = await insight_generation_repository.get_multi(
             db,
             skip=skip,
             limit=limit,
-            filters={
-                "report_id": report_id,
-                "status": status,
-                "insight_types": insight_types
-            }
+            filters=filters
         )
-        total = await insight_generation_repository.count(db)
+        total = await insight_generation_repository.count(db, filters=filters)
         return InsightGenerationList(
             items=insights,
             total=total,

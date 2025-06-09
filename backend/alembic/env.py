@@ -11,7 +11,7 @@ from sqlalchemy import pool
 from alembic import context
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from app.core.config import settings, get_settings
+from app.config.settings import get_settings
 from app.db.base import Base  # Import from base.py which has all models
 from app.db.base import *  # Import all models
 from app.models import *  # Import all models from models package
@@ -74,7 +74,8 @@ config.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
 target_metadata = Base.metadata
 
 def get_url():
-    return str(settings.SQLALCHEMY_DATABASE_URI)
+    """Get database URL from settings."""
+    return settings.SQLALCHEMY_DATABASE_URI
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -88,7 +89,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = str(settings.SQLALCHEMY_DATABASE_URI)
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -107,7 +108,7 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = str(settings.SQLALCHEMY_DATABASE_URI)
+    configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

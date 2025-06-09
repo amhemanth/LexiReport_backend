@@ -7,54 +7,37 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from alembic.config import Config
 from alembic import command
 from app.config.settings import get_settings
+from sqlalchemy import create_engine, text
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def reset_database(param: str = "reset") -> None:
-    """Reset the database by dropping and recreating it."""
-    settings = get_settings()
-    
-    # Connect to postgres database
+def reset_database():
+    """Reset the database by dropping and recreating all tables."""
     try:
-        conn = psycopg2.connect(
-            host=settings.POSTGRES_SERVER,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-            port=settings.POSTGRES_PORT,
-            database='postgres'  # Connect to default postgres database
-        )
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        # Create engine without database name
+        engine = create_engine(get_settings().SQLALCHEMY_DATABASE_URI.rsplit('/', 1)[0])
         
-        with conn.cursor() as cursor:
+        # Connect to postgres database
+        with engine.connect() as conn:
             # Terminate all connections to the database
-            cursor.execute(f"""
-                SELECT pg_terminate_backend(pid)
+            conn.execute(text(f"""
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
                 FROM pg_stat_activity
-                WHERE datname = '{settings.POSTGRES_DB}'
+                WHERE pg_stat_activity.datname = '{get_settings().POSTGRES_DB}'
                 AND pid <> pg_backend_pid();
-            """)
+            """))
             
-            logger.info(f"Terminated existing connections to {settings.POSTGRES_DB}")
-            
-            # Drop the database if it exists
-            cursor.execute(f"DROP DATABASE IF EXISTS {settings.POSTGRES_DB}")
-            logger.info(f"Database {settings.POSTGRES_DB} dropped successfully")
-            
-            # Create a new database
-            cursor.execute(f"CREATE DATABASE {settings.POSTGRES_DB}")
-            logger.info(f"Database {settings.POSTGRES_DB} created successfully")
-            
+            # Drop and recreate database
+            conn.execute(text("COMMIT"))
+            conn.execute(text(f"DROP DATABASE IF EXISTS {get_settings().POSTGRES_DB}"))
+            conn.execute(text(f"CREATE DATABASE {get_settings().POSTGRES_DB}"))
+        
+        logging.info("Database reset successfully")
     except Exception as e:
-        logger.error("An error occurred while resetting the database:")
-        if "cannot drop the currently open database" in str(e):
-            logger.error(f"Cannot drop the currently open database {settings.POSTGRES_DB}.")
-        logger.error(f"Error: {str(e)}")
+        logging.error(f"Error resetting database: {str(e)}")
         raise
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
     # Run migrations
     try:

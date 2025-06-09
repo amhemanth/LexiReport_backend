@@ -1,125 +1,130 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from app.models.analytics.voice_command import VoiceCommand
-from app.schemas.analytics import (
-    VoiceCommandCreate,
-    VoiceCommandUpdate,
-    VoiceCommandFilter,
-    VoiceCommandResponse
-)
-from app.core.exceptions import NotFoundException
-from app.repositories.base import BaseRepository
-from datetime import datetime
+from sqlalchemy import func, desc
+from datetime import datetime, timedelta
 
-class VoiceCommandRepository(BaseRepository[VoiceCommand, VoiceCommandCreate, VoiceCommandUpdate]):
-    """Repository for voice command operations."""
+from app.models.core.user import User
+from app.models.core.content import Content
 
-    def get(self, db: Session, id: str) -> Optional[VoiceCommand]:
-        """Get a voice command by ID."""
-        return db.query(VoiceCommand).filter(VoiceCommand.id == id).first()
-
-    def get_by_user(
-        self, db: Session, *, user_id: str, skip: int = 0, limit: int = 100
-    ) -> List[VoiceCommand]:
-        """Get voice commands by user."""
-        return self.get_multi_by_field(
-            db, field="user_id", value=user_id, skip=skip, limit=limit
-        )
-
-    def get_by_entity(
-        self, db: Session, *, entity_type: str, entity_id: str,
-        skip: int = 0, limit: int = 100
-    ) -> List[VoiceCommand]:
-        """Get voice commands by entity."""
-        return db.query(VoiceCommand)\
-            .filter(
-                VoiceCommand.entity_type == entity_type,
-                VoiceCommand.entity_id == entity_id
-            )\
-            .offset(skip)\
-            .limit(limit)\
-            .all()
-
-    def get_by_action_type(
-        self, db: Session, *, action_type: str,
-        skip: int = 0, limit: int = 100
-    ) -> List[VoiceCommand]:
-        """Get voice commands by action type."""
-        return self.get_multi_by_field(
-            db, field="action_type", value=action_type, skip=skip, limit=limit
-        )
-
-    def get_by_status(
-        self, db: Session, *, status: str,
-        skip: int = 0, limit: int = 100
-    ) -> List[VoiceCommand]:
-        """Get voice commands by status."""
-        return db.query(VoiceCommand)\
-            .filter(VoiceCommand.status == status)\
-            .offset(skip)\
-            .limit(limit)\
-            .all()
-
-    def create(self, db: Session, *, obj_in: VoiceCommandCreate) -> VoiceCommand:
-        """Create a new voice command."""
-        db_obj = VoiceCommand(
-            user_id=obj_in.user_id,
-            command_text=obj_in.command_text,
-            action_type=obj_in.action_type,
-            status=obj_in.status,
-            entity_type=obj_in.entity_type,
-            entity_id=obj_in.entity_id,
-            meta_data=obj_in.meta_data
-        )
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
-
-    def update(
-        self, db: Session, *, db_obj: VoiceCommand, obj_in: VoiceCommandUpdate
-    ) -> VoiceCommand:
-        """Update a voice command."""
-        update_data = obj_in.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_obj, field, value)
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
-
-    def delete(self, db: Session, *, id: str) -> VoiceCommand:
-        """Delete a voice command."""
-        obj = db.query(VoiceCommand).get(id)
-        if not obj:
-            raise NotFoundException(f"Voice command with id {id} not found")
-        db.delete(obj)
-        db.commit()
-        return obj
-
-    def filter(
-        self, db: Session, *, filter_obj: VoiceCommandFilter,
-        skip: int = 0, limit: int = 100
-    ) -> List[VoiceCommand]:
-        """Filter voice commands based on criteria."""
-        query = db.query(VoiceCommand)
-        
-        if filter_obj.user_id:
-            query = query.filter(VoiceCommand.user_id == filter_obj.user_id)
-        if filter_obj.action_type:
-            query = query.filter(VoiceCommand.action_type == filter_obj.action_type)
-        if filter_obj.status:
-            query = query.filter(VoiceCommand.status == filter_obj.status)
-        if filter_obj.entity_type:
-            query = query.filter(VoiceCommand.entity_type == filter_obj.entity_type)
-        if filter_obj.entity_id:
-            query = query.filter(VoiceCommand.entity_id == filter_obj.entity_id)
-        if filter_obj.start_date:
-            query = query.filter(VoiceCommand.created_at >= filter_obj.start_date)
-        if filter_obj.end_date:
-            query = query.filter(VoiceCommand.created_at <= filter_obj.end_date)
+class AnalyticsRepository:
+    def get_user_metrics(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get user-related metrics for the specified time range."""
+        try:
+            total_users = db.query(func.count(User.id)).scalar()
             
-        return query.offset(skip).limit(limit).all()
+            return {
+                "total_users": total_users,
+                "active_users": 0,
+                "new_users": 0,
+                "returning_users": 0,
+                "average_session_duration": 0,
+                "top_actions": []
+            }
+        except Exception as e:
+            raise e
+
+    def get_content_metrics(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get content-related metrics for the specified time range."""
+        try:
+            return {
+                "total_views": 0,
+                "unique_views": 0,
+                "average_time_spent": 0,
+                "engagement_rate": 0,
+                "top_content": []
+            }
+        except Exception as e:
+            raise e
+
+    def get_user_activity(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        user_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Get user activity data."""
+        try:
+            return []
+        except Exception as e:
+            raise e
+
+    def get_content_analytics(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        content_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get content analytics data."""
+        try:
+            return {
+                "content_type": content_type,
+                "total_items": 0,
+                "total_views": 0,
+                "total_engagement": 0,
+                "average_time_spent": 0,
+                "top_performers": [],
+                "trends": {
+                    "views": [],
+                    "engagement": []
+                }
+            }
+        except Exception as e:
+            raise e
+
+    def get_trends(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        metric: str
+    ) -> Dict[str, Any]:
+        """Get trend analysis for a specific metric."""
+        try:
+            return {
+                "metric": metric,
+                "data": [],
+                "period": f"{start_date.date()} to {end_date.date()}"
+            }
+        except Exception as e:
+            raise e
+
+    def get_analytics_summary(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get a summary of key analytics metrics."""
+        try:
+            user_metrics = self.get_user_metrics(db, start_date, end_date)
+            content_metrics = self.get_content_metrics(db, start_date, end_date)
+            
+            return {
+                "user_metrics": user_metrics,
+                "content_metrics": content_metrics,
+                "summary": {
+                    "total_users": user_metrics["total_users"],
+                    "active_users": user_metrics["active_users"],
+                    "total_views": content_metrics["total_views"],
+                    "engagement_rate": content_metrics["engagement_rate"]
+                },
+                "time_period": f"{start_date.date()} to {end_date.date()}",
+                "last_updated": datetime.utcnow()
+            }
+        except Exception as e:
+            raise e
 
 # Create repository instance
-voice_command_repository = VoiceCommandRepository(VoiceCommand) 
+analytics_repository = AnalyticsRepository() 

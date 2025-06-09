@@ -29,10 +29,11 @@ class RoleUpdate(BaseModel):
     """Schema for role update."""
     role: UserRole
 
-class UserBase(BaseSchema):
-    """Base user schema with common attributes."""
-    email: Optional[EmailStr] = None
+class UserBase(BaseModel):
+    email: EmailStr
     full_name: Optional[str] = None
+    is_active: Optional[bool] = True
+    is_superuser: bool = False
 
     @field_validator('email')
     @classmethod
@@ -50,26 +51,12 @@ class UserBase(BaseSchema):
 
 class UserCreate(UserBase):
     """Schema for user creation."""
-    email: EmailStr
-    full_name: str
     password: str
 
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
         return validate_password_strength(v)
-
-class UserInDB(UserBase):
-    """Schema for user in database."""
-    id: uuid.UUID
-    email: EmailStr
-    full_name: str
-    is_active: bool
-    role: UserRole
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(UserBase):
     """Schema for user updates."""
@@ -82,7 +69,15 @@ class UserUpdate(UserBase):
             return validate_password_strength(v)
         return v
 
-class UserResponse(UserInDB):
+class UserInDBBase(UserBase):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserResponse(UserInDBBase):
     """Schema for user response."""
     id: uuid.UUID
     email: EmailStr
@@ -91,6 +86,9 @@ class UserResponse(UserInDB):
     permissions: List[str]
 
     model_config = ConfigDict(from_attributes=True)
+
+class UserInDB(UserInDBBase):
+    hashed_password: str
 
 class UserList(BaseSchema):
     """Schema for paginated user list."""

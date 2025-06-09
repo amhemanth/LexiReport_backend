@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from app.repositories.offline import offline_content_repository, sync_queue_repository, processing_job_repository
+from app.repositories.offline import offline_content_repository, document_processing_queue_repository, processing_job_repository
 from app.models.processing.offline import OfflineContent
-from app.models.processing.document_processing import SyncQueue, ProcessingJob
+from app.models.processing.document_processing import DocumentProcessingQueue, ProcessingJob
 from typing import List, Optional, Dict, Any
 import uuid
 import logging
@@ -18,9 +18,9 @@ class OfflineService:
         """Get offline content for a user."""
         return offline_content_repository.get_by_user(db, user_id)
 
-    def get_sync_queue(self, db: Session) -> List[SyncQueue]:
-        """Get all sync queue entries."""
-        return sync_queue_repository.get_all(db)
+    def get_processing_queue(self, db: Session) -> List[DocumentProcessingQueue]:
+        """Get all document processing queue entries."""
+        return document_processing_queue_repository.get_all(db)
 
     def get_processing_jobs(self, db: Session) -> List[ProcessingJob]:
         """Get all processing jobs."""

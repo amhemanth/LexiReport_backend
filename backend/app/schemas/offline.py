@@ -33,6 +33,30 @@ class OfflineContentResponse(OfflineContentInDB):
     """Schema for offline content response."""
     pass
 
+class DocumentProcessingQueueBase(BaseSchema):
+    """Base document processing queue schema."""
+    document_id: str = Field(..., description="ID of the document to process")
+    processing_type: str = Field(..., description="Type of processing to perform")
+    priority: int = Field(default=0, description="Processing priority")
+
+class DocumentProcessingQueueCreate(DocumentProcessingQueueBase):
+    """Schema for document processing queue creation."""
+    pass
+
+class DocumentProcessingQueueUpdate(BaseSchema):
+    """Schema for document processing queue updates."""
+    status: Optional[str] = None
+    priority: Optional[int] = None
+
+class DocumentProcessingQueueInDB(DocumentProcessingQueueBase, TimestampSchema):
+    """Schema for document processing queue in database."""
+    id: uuid.UUID
+    status: str = "pending"
+
+class DocumentProcessingQueueResponse(DocumentProcessingQueueInDB):
+    """Schema for document processing queue response."""
+    pass
+
 class SyncQueueBase(BaseSchema):
     """Base sync queue schema."""
     content_type: str

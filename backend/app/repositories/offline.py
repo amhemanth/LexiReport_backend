@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 import uuid
 
 from app.models.processing.offline import OfflineContent
-from app.models.processing.document_processing import SyncQueue, ProcessingJob
+from app.models.processing.document_processing import DocumentProcessingQueue, ProcessingJob
 from app.schemas.offline import (
     OfflineContentCreate, OfflineContentUpdate,
-    SyncQueueCreate, SyncQueueUpdate,
+    DocumentProcessingQueueCreate, DocumentProcessingQueueUpdate,
     ProcessingJobCreate, ProcessingJobUpdate
 )
 from .base import BaseRepository
@@ -32,23 +32,23 @@ class OfflineContentRepository(
             db, field="status", value=status, skip=skip, limit=limit
         )
 
-class SyncQueueRepository(
-    BaseRepository[SyncQueue, SyncQueueCreate, SyncQueueUpdate]
+class DocumentProcessingQueueRepository(
+    BaseRepository[DocumentProcessingQueue, DocumentProcessingQueueCreate, DocumentProcessingQueueUpdate]
 ):
-    """Repository for SyncQueue model."""
+    """Repository for DocumentProcessingQueue model."""
 
     def get_by_status(
         self, db: Session, *, status: str, skip: int = 0, limit: int = 100
-    ) -> List[SyncQueue]:
-        """Get sync queue entries by status."""
+    ) -> List[DocumentProcessingQueue]:
+        """Get processing queue entries by status."""
         return self.get_multi_by_field(
             db, field="status", value=status, skip=skip, limit=limit
         )
 
     def get_by_priority(
         self, db: Session, *, priority: int, skip: int = 0, limit: int = 100
-    ) -> List[SyncQueue]:
-        """Get sync queue entries by priority."""
+    ) -> List[DocumentProcessingQueue]:
+        """Get processing queue entries by priority."""
         return self.get_multi_by_field(
             db, field="priority", value=priority, skip=skip, limit=limit
         )
@@ -76,5 +76,5 @@ class ProcessingJobRepository(
 
 # Create repository instances
 offline_content_repository = OfflineContentRepository(OfflineContent)
-sync_queue_repository = SyncQueueRepository(SyncQueue)
+document_processing_queue_repository = DocumentProcessingQueueRepository(DocumentProcessingQueue)
 processing_job_repository = ProcessingJobRepository(ProcessingJob) 

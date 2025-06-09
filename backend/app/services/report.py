@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
 import mimetypes
 import uuid
+from datetime import datetime
+import shutil
+from pathlib import Path
+import asyncio
+from docx import Document
+import pandas as pd
+import openpyxl
 
 from app.models.core.user import User
 from app.models.reports import (
@@ -28,10 +35,13 @@ from app.schemas.report import (
 )
 from app.repositories.report import report_repository
 from app.config.settings import get_settings
-from app.config.storage_settings import get_storage_settings
+from app.core.exceptions import (
+    NotFoundException,
+    PermissionException,
+    ValidationException
+)
 
 settings = get_settings()
-storage_settings = get_storage_settings()
 
 
 class ReportService:
@@ -39,19 +49,70 @@ class ReportService:
 
     def __init__(self, db: Session):
         self.db = db
+        self.upload_dir = Path(settings.UPLOAD_DIR)
+        self.max_upload_size = settings.MAX_UPLOAD_SIZE
+        self.allowed_extensions = [ext.strip() for ext in settings.ALLOWED_EXTENSIONS.split(",")]
+        self.cache_dir = Path(settings.CACHE_DIR)
+        self.cache_ttl = settings.CACHE_TTL
+        
+        # Ensure directories exist
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     async def create_report(
         self,
         user: User,
-        report_in: ReportCreate
+        report_in: ReportCreate,
+        file: Optional[UploadFile] = None
     ) -> ReportResponse:
         """Create a new report."""
-        report_data = report_in.dict()
-        report_data["created_by"] = user.id
-        report_data["updated_by"] = user.id
-        
-        report = report_repository.create(self.db, obj_in=report_data)
-        return ReportResponse.from_orm(report)
+        try:
+            report_data = report_in.dict()
+            report_data["created_by"] = user.id
+            report_data["updated_by"] = user.id
+            
+            # Validate file
+            if not file:
+                raise ValidationException("No file provided")
+            
+            # Check file size
+            if file.size > self.max_upload_size:
+                raise ValidationException(f"File too large. Maximum size is {self.max_upload_size} bytes")
+            
+            # Check file extension
+            file_ext = os.path.splitext(file.filename)[1].lower().lstrip('.')
+            if file_ext not in self.allowed_extensions:
+                raise ValidationException(f"File type not allowed. Allowed types: {', '.join(self.allowed_extensions)}")
+            
+            # Create report
+            report = Report(
+                title=report_in.title,
+                description=report_in.description,
+                user_id=user.id,
+                file_path=str(self.upload_dir / f"{uuid.uuid4()}_{file.filename}"),
+                file_type=file_ext,
+                file_size=file.size,
+                status="pending"
+            )
+            
+            # Save file
+            with open(report.file_path, "wb") as f:
+                await file.seek(0)
+                while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                    f.write(chunk)
+            
+            # Save report to database
+            report = report_repository.create(self.db, obj_in=report)
+            
+            # Process report asynchronously
+            asyncio.create_task(self.process_report(self.db, report.id))
+            
+            return ReportResponse.from_orm(report)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating report: {str(e)}"
+            )
 
     async def list_reports(
         self,
@@ -117,7 +178,8 @@ class ReportService:
         self,
         user: User,
         report_id: uuid.UUID,
-        report_in: ReportUpdate
+        report_in: ReportUpdate,
+        file: Optional[UploadFile] = None
     ) -> Optional[ReportResponse]:
         """Update a report."""
         report = report_repository.get(self.db, id=report_id)
@@ -130,6 +192,10 @@ class ReportService:
 
         update_data = report_in.dict(exclude_unset=True)
         update_data["updated_by"] = user.id
+        
+        # Handle file upload if provided
+        if file:
+            await self._handle_file_upload(report_id, file)
         
         report = report_repository.update(self.db, db_obj=report, obj_in=update_data)
         return ReportResponse.from_orm(report)
@@ -148,6 +214,9 @@ class ReportService:
         if report.created_by != user.id:
             return False
 
+        # Delete associated files
+        await self._delete_report_files(report_id)
+        
         report_repository.remove(self.db, id=report_id)
         return True
 
@@ -314,4 +383,191 @@ class ReportService:
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"'
             }
-        ) 
+        )
+
+    async def _handle_file_upload(self, report_id: uuid.UUID, file: UploadFile) -> None:
+        """Handle file upload for a report."""
+        # Validate file size
+        file_size = 0
+        chunk_size = 1024 * 1024  # 1MB chunks
+        while chunk := await file.read(chunk_size):
+            file_size += len(chunk)
+            if file_size > self.max_upload_size:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File size exceeds maximum allowed size of {self.max_upload_size} bytes"
+                )
+        
+        # Validate file extension
+        file_extension = os.path.splitext(file.filename)[1].lower().lstrip('.')
+        if file_extension not in self.allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File extension not allowed. Allowed extensions: {', '.join(self.allowed_extensions)}"
+            )
+        
+        # Create upload directory if it doesn't exist
+        os.makedirs(self.upload_dir, exist_ok=True)
+        
+        # Save file
+        file_path = os.path.join(self.upload_dir, f"{report_id}_{file.filename}")
+        with open(file_path, "wb") as buffer:
+            await file.seek(0)
+            while chunk := await file.read(chunk_size):
+                buffer.write(chunk)
+
+    async def _delete_report_files(self, report_id: uuid.UUID) -> None:
+        """Delete files associated with a report."""
+        try:
+            # Find all files for this report
+            for filename in os.listdir(self.upload_dir):
+                if filename.startswith(str(report_id)):
+                    file_path = os.path.join(self.upload_dir, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+        except Exception as e:
+            logger.error(f"Error deleting report files: {str(e)}")
+
+    async def process_report(self, db: Session, report_id: uuid.UUID) -> None:
+        """Process a report asynchronously."""
+        try:
+            report = self.db.query(Report).filter(Report.id == report_id).first()
+            if not report:
+                raise NotFoundException("Report not found")
+
+            # Update status to processing
+            report.status = "processing"
+            self.db.add(report)
+            self.db.commit()
+
+            # Process based on file type
+            content = await self._process_file(report)
+
+            # Update report with processed content
+            update_data = {
+                "content": content,
+                "status": "processed",
+                "processed_at": datetime.utcnow()
+            }
+            self.db.add(report)
+            self.db.commit()
+
+        except Exception as e:
+            # Update status to failed
+            if report:
+                report.status = "failed"
+                report.error = str(e)
+                self.db.add(report)
+                self.db.commit()
+            raise ValidationException(f"Error processing report: {str(e)}")
+
+    async def _process_file(self, report: Report) -> Dict[str, Any]:
+        """Process the report file based on its type."""
+        if not os.path.exists(report.file_path):
+            raise FileNotFoundError(f"Report file not found: {report.file_path}")
+
+        try:
+            if report.file_type == "pdf":
+                return await self._process_pdf(report)
+            elif report.file_type in ["docx", "doc"]:
+                return await self._process_docx(report)
+            elif report.file_type in ["xlsx", "xls"]:
+                return await self._process_excel(report)
+            elif report.file_type == "csv":
+                return await self._process_csv(report)
+            else:
+                raise ValueError(f"Unsupported file type: {report.file_type}")
+        except Exception as e:
+            raise ValidationException(f"Error processing file: {str(e)}")
+
+    async def _process_pdf(self, report: Report) -> Dict[str, Any]:
+        """Process PDF files."""
+        # TODO: Implement PDF processing
+        raise NotImplementedError("PDF processing not implemented")
+
+    async def _process_docx(self, report: Report) -> Dict[str, Any]:
+        """Process DOCX files."""
+        doc = Document(report.file_path)
+        return {
+            "text": "\n".join([p.text for p in doc.paragraphs if p.text.strip()]),
+            "tables": [table.text for table in doc.tables],
+            "metadata": {
+                "paragraphs": len(doc.paragraphs),
+                "tables": len(doc.tables),
+                "sections": len(doc.sections)
+            }
+        }
+
+    async def _process_excel(self, report: Report) -> Dict[str, Any]:
+        """Process Excel files."""
+        wb = openpyxl.load_workbook(report.file_path)
+        data = {}
+        for sheet in wb.worksheets:
+            sheet_data = []
+            for row in sheet.iter_rows(values_only=True):
+                sheet_data.append([str(cell) for cell in row if cell is not None])
+            data[sheet.title] = sheet_data
+        return {
+            "sheets": data,
+            "metadata": {
+                "sheets": len(wb.worksheets),
+                "active_sheet": wb.active.title
+            }
+        }
+
+    async def _process_csv(self, report: Report) -> Dict[str, Any]:
+        """Process CSV files."""
+        df = pd.read_csv(report.file_path)
+        return {
+            "data": df.to_dict(orient="records"),
+            "metadata": {
+                "rows": len(df),
+                "columns": list(df.columns),
+                "dtypes": df.dtypes.to_dict()
+            }
+        }
+
+    async def create_version(
+        self,
+        db: Session,
+        report: Report,
+        changes_description: str
+    ) -> ReportVersion:
+        """Create a new version of the report."""
+        # Get the latest version number
+        latest_version = (
+            db.query(ReportVersion)
+            .filter(ReportVersion.report_id == report.id)
+            .order_by(ReportVersion.version_number.desc())
+            .first()
+        )
+        version_number = (latest_version.version_number + 1) if latest_version else 1
+
+        # Create new version
+        version = ReportVersion(
+            report_id=report.id,
+            version_number=version_number,
+            file_path=report.file_path,
+            changes_description=changes_description
+        )
+        db.add(version)
+        db.commit()
+        db.refresh(version)
+
+        return version
+
+    async def update_metadata(
+        self,
+        db: Session,
+        report: Report,
+        metadata: Dict[str, Any]
+    ) -> None:
+        """Update report metadata."""
+        report.metadata.update(metadata)
+        report.metadata["last_updated"] = datetime.utcnow().isoformat()
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+
+# Create service instance
+report_service = ReportService(None) 

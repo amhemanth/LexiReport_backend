@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
-from fastapi import HTTPException, status
+from typing import List, Optional, Dict, Any
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 import uuid
 
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token, ALGORITHM
 from app.repositories.user import user_repository
-from app.schemas.auth import UserCreate, UserLogin, Token
+from app.schemas.auth import UserCreate, UserLogin, Token, TokenData
 from app.models.core.user import User, UserRole
 from app.models.core.user_permission import UserPermission
 from app.models.core.permission import Permission
@@ -16,15 +19,49 @@ from app.core.exceptions import (
     DatabaseError,
     UserAlreadyExistsError,
     InvalidCredentialsError,
-    InactiveUserError
+    InactiveUserError,
+    NotFoundException,
+    PermissionException,
+    ValidationException
 )
 from app.core.permissions import Permission as PermissionEnum
+from app.db.session import get_db
+from app.schemas.user import UserUpdate, UserResponse
 
 settings = get_settings()
 
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 class AuthService:
+    """Service for authentication operations."""
+
     def __init__(self, user_repository):
+        """Initialize the auth service with dependencies."""
         self.user_repository = user_repository
+        self.secret_key = settings.SECRET_KEY
+        self.algorithm = settings.JWT_ALGORITHM
+        self.access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash."""
+        return pwd_context.verify(plain_password, hashed_password)
+
+    def get_password_hash(self, password: str) -> str:
+        """Generate password hash."""
+        return pwd_context.hash(password)
+
+    def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+        """Create a new access token."""
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
+        return encoded_jwt
 
     @staticmethod
     def get_user(db: Session, user_id: uuid.UUID) -> Optional[User]:
@@ -79,14 +116,14 @@ class AuthService:
         """Register a new user."""
         try:
             # Check if user exists
-            if self.user_repository.get_by_email(db, email=user_in.email):
+            if user_repository.get_by_email(db, email=user_in.email):
                 raise UserAlreadyExistsError("Email already registered")
             
             # Hash password
-            hashed_password = get_password_hash(user_in.password)
+            hashed_password = self.get_password_hash(user_in.password)
             
             # Create user with default role
-            user = self.user_repository.create(
+            user = user_repository.create(
                 db=db,
                 obj_in=user_in,
                 hashed_password=hashed_password,
@@ -118,17 +155,17 @@ class AuthService:
         """Authenticate user and return token."""
         try:
             # Get user
-            user = self.user_repository.get_by_email(db, email=user_in.email)
+            user = user_repository.get_by_email(db, email=user_in.email)
             if not user:
                 raise InvalidCredentialsError()
             
             # Get current password
-            current_password = self.user_repository.get_current_password(db, user.id)
+            current_password = user_repository.get_current_password(db, user.id)
             if not current_password:
                 raise InvalidCredentialsError()
             
             # Verify password
-            if not verify_password(user_in.password, current_password.hashed_password):
+            if not self.verify_password(user_in.password, current_password.hashed_password):
                 raise InvalidCredentialsError()
             
             # Check if user is active
@@ -137,7 +174,7 @@ class AuthService:
             
             # Create access token with role and permissions
             access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = create_access_token(
+            access_token = self.create_access_token(
                 data={
                     "sub": user.email,
                     "role": user.role.value,
@@ -153,4 +190,126 @@ class AuthService:
                 permissions=user.get_permissions()
             )
         except SQLAlchemyError as e:
-            raise DatabaseError(f"Error during user login: {str(e)}") 
+            raise DatabaseError(f"Error during user login: {str(e)}")
+
+    def authenticate_user(self, db: Session, email: str, password: str) -> Optional[UserResponse]:
+        """Authenticate a user."""
+        user = self.user_repository.get_by_email(db, email=email)
+        if not user:
+            return None
+        if not self.verify_password(password, user.hashed_password):
+            return None
+        return UserResponse.from_orm(user)
+
+    def get_current_user(self, db: Session, token: str) -> Optional[UserResponse]:
+        """Get the current user from a JWT token."""
+        payload = self.verify_token(token)
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user = self.get_user_by_id(db, user_id=uuid.UUID(user_id))
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+
+    def get_current_active_user(self, db: Session, token: str) -> Optional[UserResponse]:
+        """Get the current active user from a JWT token."""
+        user = self.get_current_user(db, token=token)
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Inactive user"
+            )
+        return user
+
+    def get_current_active_superuser(self, db: Session, token: str) -> Optional[UserResponse]:
+        """Get the current active superuser from a JWT token."""
+        user = self.get_current_active_user(db, token=token)
+        if not user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The user doesn't have enough privileges"
+            )
+        return user
+
+    def get_user_by_id(self, db: Session, *, user_id: uuid.UUID) -> Optional[UserResponse]:
+        """Get a user by ID."""
+        user = self.user_repository.get(db, id=user_id)
+        if not user:
+            raise NotFoundException("User not found")
+        return UserResponse.from_orm(user)
+
+    def get_user_by_email(self, db: Session, *, email: str) -> Optional[UserResponse]:
+        """Get a user by email."""
+        user = self.user_repository.get_by_email(db, email=email)
+        if not user:
+            raise NotFoundException("User not found")
+        return UserResponse.from_orm(user)
+
+    def get_users(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> list[UserResponse]:
+        """Get a list of users."""
+        users = self.user_repository.get_multi(db, skip=skip, limit=limit)
+        return [UserResponse.from_orm(user) for user in users]
+
+    def create_user(self, db: Session, *, obj_in: UserCreate) -> UserResponse:
+        """Create a new user."""
+        # Check if user with email already exists
+        if self.user_repository.get_by_email(db, email=obj_in.email):
+            raise ValidationException("Email already registered")
+        
+        # Create new user
+        user = User(
+            email=obj_in.email,
+            hashed_password=self.get_password_hash(obj_in.password),
+            full_name=obj_in.full_name,
+            is_active=True,
+            is_superuser=False
+        )
+        user = self.user_repository.create(db, obj_in=user)
+        return UserResponse.from_orm(user)
+
+    def update_user(
+        self, db: Session, *, user_id: uuid.UUID, obj_in: UserUpdate
+    ) -> UserResponse:
+        """Update a user."""
+        user = self.user_repository.get(db, id=user_id)
+        if not user:
+            raise NotFoundException("User not found")
+        
+        # Update user
+        user = self.user_repository.update(db, db_obj=user, obj_in=obj_in)
+        return UserResponse.from_orm(user)
+
+    def delete_user(self, db: Session, *, user_id: uuid.UUID) -> None:
+        """Delete a user."""
+        user = self.user_repository.get(db, id=user_id)
+        if not user:
+            raise NotFoundException("User not found")
+        self.user_repository.remove(db, id=user_id)
+
+    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify a JWT token."""
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return payload
+        except JWTError:
+            return None
+
+# Create service instance
+auth_service = AuthService(user_repository) 

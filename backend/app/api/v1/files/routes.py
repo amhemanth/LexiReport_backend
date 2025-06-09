@@ -7,10 +7,11 @@ from app.schemas.file import FileUpload, FileResponse
 from app.services.file import file_service
 import uuid
 import os
+from app.config.settings import get_settings
 
 router = APIRouter()
-
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploaded_files")
+settings = get_settings()
+UPLOAD_DIR = settings.UPLOAD_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.get("/", response_model=List[FileResponse])

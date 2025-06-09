@@ -132,4 +132,50 @@ class SyncJobList(BaseSchema):
     total: int
     page: int
     size: int
+    pages: int
+
+class BIIntegrationBase(BaseSchema):
+    """Base BI integration schema."""
+    name: str = Field(..., min_length=1, max_length=100)
+    platform_type: str = Field(..., description="Type of BI platform (e.g., 'power_bi', 'tableau')")
+    api_key: str = Field(..., min_length=1, max_length=255)
+    api_secret: str = Field(..., min_length=1, max_length=255)
+    base_url: str = Field(..., min_length=1, max_length=255)
+    workspace_id: Optional[str] = Field(None, max_length=100)
+    meta_data: Optional[Dict[str, Any]] = None
+    is_active: bool = Field(default=True)
+    entity_type: Optional[str] = Field(None, max_length=50)
+    entity_id: Optional[uuid.UUID] = None
+
+class BIIntegrationCreate(BIIntegrationBase):
+    """Schema for BI integration creation."""
+    pass
+
+class BIIntegrationUpdate(BaseSchema):
+    """Schema for BI integration updates."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    api_key: Optional[str] = Field(None, min_length=1, max_length=255)
+    api_secret: Optional[str] = Field(None, min_length=1, max_length=255)
+    base_url: Optional[str] = Field(None, min_length=1, max_length=255)
+    workspace_id: Optional[str] = Field(None, max_length=100)
+    meta_data: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+    entity_type: Optional[str] = Field(None, max_length=50)
+    entity_id: Optional[uuid.UUID] = None
+
+class BIIntegrationInDB(BIIntegrationBase, TimestampSchema):
+    """Schema for BI integration in database."""
+    id: uuid.UUID
+    created_by: Optional[uuid.UUID] = None
+
+class BIIntegrationResponse(BIIntegrationInDB):
+    """Schema for BI integration response."""
+    pass
+
+class BIIntegrationList(BaseSchema):
+    """Schema for paginated BI integration list."""
+    items: List[BIIntegrationResponse]
+    total: int
+    page: int
+    size: int
     pages: int 

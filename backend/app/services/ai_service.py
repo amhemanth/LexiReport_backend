@@ -7,7 +7,8 @@ from datetime import datetime
 from docx import Document
 import pandas as pd
 import openpyxl
-from transformers import pipeline
+import uuid
+from fastapi import status
 
 from app.config.settings import get_settings
 from app.models.reports import (
@@ -17,22 +18,96 @@ from app.models.reports import (
     ReportVersion
 )
 from app.schemas.insight import ReportInsightCreate, ReportInsightResponse
+from app.schemas.ai import AIRequest, AIResponse
 from app.core.exceptions import AIProcessingError
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
 class AIService:
-    """Service for AI-powered report analysis and insight generation."""
+    """Service for AI operations."""
 
     def __init__(self):
+        """Initialize the AI service."""
         self.model_path = settings.MODEL_PATH
         self.cache_dir = settings.CACHE_DIR
+        self.cache_ttl = settings.CACHE_TTL
+        self.max_tokens = settings.MAX_TOKENS
+        self.temperature = settings.TEMPERATURE
+        self.top_p = settings.TOP_P
+        self.frequency_penalty = settings.FREQUENCY_PENALTY
+        self.presence_penalty = settings.PRESENCE_PENALTY
         self.max_workers = settings.MAX_WORKERS
         self.batch_size = settings.BATCH_SIZE
-        self.summarizer = pipeline("summarization", model=settings.AI_MODEL_NAME)
-        self.qa_pipeline = pipeline("question-answering", model=settings.AI_QA_MODEL)
-        self.keywords_pipeline = pipeline("feature-extraction", model=settings.AI_KEYWORDS_MODEL)
+        
+        # Initialize pipelines as None
+        self._summarizer = None
+        self._qa_pipeline = None
+        self._keywords_pipeline = None
+
+    @property
+    def summarizer(self):
+        """Lazy load the summarization pipeline."""
+        if self._summarizer is None:
+            try:
+                from transformers import pipeline
+                self._summarizer = pipeline("summarization", model=settings.AI_MODEL_NAME)
+            except ImportError:
+                logger.warning("Transformers library not available. Summarization will be disabled.")
+                self._summarizer = None
+        return self._summarizer
+
+    @property
+    def qa_pipeline(self):
+        """Lazy load the question-answering pipeline."""
+        if self._qa_pipeline is None:
+            try:
+                from transformers import pipeline
+                self._qa_pipeline = pipeline("question-answering", model=settings.AI_QA_MODEL)
+            except ImportError:
+                logger.warning("Transformers library not available. Question answering will be disabled.")
+                self._qa_pipeline = None
+        return self._qa_pipeline
+
+    @property
+    def keywords_pipeline(self):
+        """Lazy load the keywords pipeline."""
+        if self._keywords_pipeline is None:
+            try:
+                from transformers import pipeline
+                self._keywords_pipeline = pipeline("feature-extraction", model=settings.AI_KEYWORDS_MODEL)
+            except ImportError:
+                logger.warning("Transformers library not available. Keyword extraction will be disabled.")
+                self._keywords_pipeline = None
+        return self._keywords_pipeline
+
+    async def process_request(
+        self,
+        request: AIRequest
+    ) -> AIResponse:
+        """Process an AI request."""
+        try:
+            # Validate request
+            if not request.content:
+                raise AIProcessingError("Request content cannot be empty")
+
+            # Process request
+            response = await self._process_ai_request(request)
+
+            return AIResponse(
+                id=uuid.uuid4(),
+                request_id=request.id,
+                content=response,
+                created_at=datetime.utcnow()
+            )
+        except Exception as e:
+            raise AIProcessingError(f"Error processing AI request: {str(e)}")
+
+    async def _process_ai_request(self, request: AIRequest) -> str:
+        """Process an AI request and return the response."""
+        # TODO: Implement actual AI processing logic
+        # This is a placeholder that should be replaced with actual AI model integration
+        return f"Processed request: {request.content}"
 
     async def process_report(self, report: Report) -> List[ReportInsight]:
         """Process a report and generate insights."""
@@ -76,50 +151,65 @@ class AIService:
         """Generate insights from report content."""
         insights = []
         
-        # Generate summary
-        summary = await self._generate_summary(content)
-        insights.append(
-            ReportInsight(
-                report_id=report.id,
-                insight_type="summary",
-                content=summary,
-                confidence_score=0.9,
-                metadata={
-                    "model": "gpt-4",
-                    "generated_at": datetime.utcnow().isoformat()
-                }
+        # Generate summary if summarizer is available
+        if self.summarizer:
+            summary = await self._generate_summary(content)
+            insights.append(
+                ReportInsight(
+                    report_id=report.id,
+                    insight_type="summary",
+                    content=summary,
+                    confidence_score=0.9,
+                    metadata={
+                        "model": settings.AI_MODEL_NAME,
+                        "generated_at": datetime.utcnow().isoformat()
+                    }
+                )
             )
-        )
 
-        # Generate key points
-        key_points = await self._generate_key_points(content)
-        insights.append(
-            ReportInsight(
-                report_id=report.id,
-                insight_type="key_points",
-                content=json.dumps(key_points),
-                confidence_score=0.85,
-                metadata={
-                    "model": "gpt-4",
-                    "generated_at": datetime.utcnow().isoformat()
-                }
+            # Generate key points
+            key_points = await self._generate_key_points(content)
+            insights.append(
+                ReportInsight(
+                    report_id=report.id,
+                    insight_type="key_points",
+                    content=json.dumps(key_points),
+                    confidence_score=0.85,
+                    metadata={
+                        "model": settings.AI_MODEL_NAME,
+                        "generated_at": datetime.utcnow().isoformat()
+                    }
+                )
             )
-        )
 
-        # Generate recommendations
-        recommendations = await self._generate_recommendations(content)
-        insights.append(
-            ReportInsight(
-                report_id=report.id,
-                insight_type="recommendations",
-                content=json.dumps(recommendations),
-                confidence_score=0.8,
-                metadata={
-                    "model": "gpt-4",
-                    "generated_at": datetime.utcnow().isoformat()
-                }
+            # Generate recommendations
+            recommendations = await self._generate_recommendations(content)
+            insights.append(
+                ReportInsight(
+                    report_id=report.id,
+                    insight_type="recommendations",
+                    content=json.dumps(recommendations),
+                    confidence_score=0.8,
+                    metadata={
+                        "model": settings.AI_MODEL_NAME,
+                        "generated_at": datetime.utcnow().isoformat()
+                    }
+                )
             )
-        )
+        else:
+            # Fallback to basic text processing if AI models are not available
+            insights.append(
+                ReportInsight(
+                    report_id=report.id,
+                    insight_type="basic_summary",
+                    content=content[:1000],  # First 1000 characters as basic summary
+                    confidence_score=0.5,
+                    metadata={
+                        "model": "basic_text_processing",
+                        "generated_at": datetime.utcnow().isoformat()
+                    }
+                )
+            )
 
         return insights
 
@@ -145,22 +235,51 @@ class AIService:
         return df.to_csv(index=False)
 
     async def _generate_summary(self, content: str) -> str:
+        """Generate a summary of the content."""
+        if not self.summarizer:
+            return content[:1000]  # Fallback to first 1000 characters
         summary = self.summarizer(content[:1024], max_length=130, min_length=30, do_sample=False)
         return summary[0]['summary_text']
 
     async def _generate_key_points(self, content: str) -> List[str]:
-        # For demo, split summary into sentences as key points
+        """Generate key points from the content."""
+        if not self.summarizer:
+            return [content[:200]]  # Fallback to first 200 characters as a single point
         summary = await self._generate_summary(content)
         return [s.strip() for s in summary.split('.') if s.strip()]
 
     async def _generate_recommendations(self, content: str) -> List[str]:
-        # Placeholder: Use summary as recommendations
+        """Generate recommendations from the content."""
+        if not self.summarizer:
+            return ["Basic recommendation: Review the document in detail"]  # Fallback recommendation
         summary = await self._generate_summary(content)
         return [f"Recommendation: {s.strip()}" for s in summary.split('.') if s.strip()]
 
     async def answer_question(self, context: str, question: str) -> str:
+        """Answer a question based on the context."""
+        if not self.qa_pipeline:
+            return "AI question answering is not available. Please try again later."
         result = self.qa_pipeline(question=question, context=context[:512])
         return result['answer']
+
+    def validate_file(self, file_path: str) -> bool:
+        """Validate file size and extension."""
+        # Check file size
+        if os.path.getsize(file_path) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File too large"
+            )
+        
+        # Check file extension
+        ext = os.path.splitext(file_path)[1].lower().lstrip('.')
+        if ext not in settings.ALLOWED_EXTENSIONS.split(','):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File type not allowed. Allowed types: {settings.ALLOWED_EXTENSIONS}"
+            )
+        
+        return True
 
 # Create service instance
 ai_service = AIService() 

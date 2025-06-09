@@ -7,14 +7,17 @@ sys.path.append(str(Path(__file__).parent))
 
 from alembic.config import Config
 from alembic import command
-from app.config.config import settings
+from app.config.settings import get_settings
+from app.db.base import Base
+
+settings = get_settings()
 
 def run_migrations():
     """Run database migrations."""
     # Create Alembic configuration
     alembic_cfg = Config("alembic.ini")
     
-    # Set the database URL in the alembic.ini file
+    # Set the database URL
     alembic_cfg.set_main_option("sqlalchemy.url", str(settings.SQLALCHEMY_DATABASE_URI))
     
     # Run the migration

@@ -9,6 +9,12 @@ from app.schemas.analytics import (
     VoiceCommandResponse
 )
 from app.core.exceptions import NotFoundException
+from datetime import datetime, timedelta
+import logging
+
+from app.repositories.analytics import analytics_repository
+
+logger = logging.getLogger(__name__)
 
 class AnalyticsService:
     """Service for managing analytics and voice commands."""
@@ -84,6 +90,95 @@ class AnalyticsService:
         return voice_command_repository.filter(
             db, filter_obj=filter_obj, skip=skip, limit=limit
         )
+
+    def get_dashboard_analytics(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get dashboard analytics for the specified time range."""
+        try:
+            return analytics_repository.get_dashboard_analytics(
+                db, start_date=start_date, end_date=end_date
+            )
+        except Exception as e:
+            logger.error(f"Error getting dashboard analytics: {str(e)}")
+            raise
+
+    def get_user_activity(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        user_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Get user activity analytics."""
+        try:
+            return analytics_repository.get_user_activity(
+                db,
+                start_date=start_date,
+                end_date=end_date,
+                user_id=user_id
+            )
+        except Exception as e:
+            logger.error(f"Error getting user activity: {str(e)}")
+            raise
+
+    def get_content_analytics(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        content_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get content analytics."""
+        try:
+            return analytics_repository.get_content_analytics(
+                db,
+                start_date=start_date,
+                end_date=end_date,
+                content_type=content_type
+            )
+        except Exception as e:
+            logger.error(f"Error getting content analytics: {str(e)}")
+            raise
+
+    def get_trends(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        metric: str
+    ) -> Dict[str, Any]:
+        """Get trend analysis for a specific metric."""
+        try:
+            return analytics_repository.get_trends(
+                db,
+                start_date=start_date,
+                end_date=end_date,
+                metric=metric
+            )
+        except Exception as e:
+            logger.error(f"Error getting trends: {str(e)}")
+            raise
+
+    def get_analytics_summary(
+        self,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """Get a summary of key analytics metrics."""
+        try:
+            return analytics_repository.get_analytics_summary(
+                db,
+                start_date=start_date,
+                end_date=end_date
+            )
+        except Exception as e:
+            logger.error(f"Error getting analytics summary: {str(e)}")
+            raise
 
 # Create service instance
 analytics_service = AnalyticsService() 
