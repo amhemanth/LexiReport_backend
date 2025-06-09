@@ -79,6 +79,14 @@ class AuditLog(Base):
         Index("ix_audit_logs_created", "created_at"),
         Index("ix_audit_logs_session", "session_id"),
         Index("ix_audit_logs_success", "is_successful"),
+        Index('idx_audit_log_user', 'user_id'),
+        Index('idx_audit_log_action', 'action'),
+        Index('idx_audit_log_entity', 'entity_type', 'entity_id'),
+        Index('idx_audit_log_created', 'created_at'),
+        Index('idx_audit_log_user_action', 'user_id', 'action'),
+        Index('idx_audit_log_user_created', 'user_id', 'created_at'),
+        Index('idx_audit_log_entity_created', 'entity_type', 'entity_id', 'created_at'),
+        Index('idx_audit_log_success', 'is_successful'),
     )
 
     def __repr__(self) -> str:

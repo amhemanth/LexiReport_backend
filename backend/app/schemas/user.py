@@ -30,9 +30,10 @@ class RoleUpdate(BaseModel):
     role: UserRole
 
 class UserBase(BaseModel):
+    """Base user schema."""
     email: EmailStr
-    full_name: Optional[str] = None
-    is_active: Optional[bool] = True
+    full_name: str
+    is_active: bool = True
     is_superuser: bool = False
 
     @field_validator('email')
@@ -50,17 +51,21 @@ class UserBase(BaseModel):
         return v
 
 class UserCreate(UserBase):
-    """Schema for user creation."""
-    password: str
+    """User creation schema."""
+    password: str = Field(..., min_length=8)
 
     @field_validator('password')
     @classmethod
     def validate_password(cls, v):
         return validate_password_strength(v)
 
-class UserUpdate(UserBase):
-    """Schema for user updates."""
-    password: Optional[str] = None
+class UserUpdate(BaseModel):
+    """User update schema."""
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=8)
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
 
     @field_validator('password')
     @classmethod
@@ -78,16 +83,17 @@ class UserInDBBase(UserBase):
         from_attributes = True
 
 class UserResponse(UserInDBBase):
-    """Schema for user response."""
+    """User response schema."""
     id: uuid.UUID
-    email: EmailStr
-    full_name: str
-    is_active: bool
-    permissions: List[str]
+    created_at: datetime
+    updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        """Pydantic config."""
+        from_attributes = True
 
 class UserInDB(UserInDBBase):
+    """User in database schema."""
     hashed_password: str
 
 class UserList(BaseSchema):

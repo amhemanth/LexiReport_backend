@@ -2,11 +2,11 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 from sqlalchemy import and_, or_, desc, asc
 from fastapi import HTTPException, status
 from app.db.base_class import Base
-from app.core.exceptions import DatabaseError
+from app.core.exceptions import DatabaseError, ValidationException
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return db.query(self.model).filter(self.model.id == id).first()
         except SQLAlchemyError as e:
             logger.error(f"Error getting {self.model.__name__} by ID {id}: {str(e)}")
+            if isinstance(e, OperationalError):
+                raise DatabaseError("Database connection error")
             raise DatabaseError(f"Error retrieving {self.model.__name__}")
 
     def get_multi(
@@ -77,6 +79,8 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return query.offset(skip).limit(limit).all()
         except SQLAlchemyError as e:
             logger.error(f"Error getting all {self.model.__name__}: {str(e)}")
+            if isinstance(e, OperationalError):
+                raise DatabaseError("Database connection error")
             raise DatabaseError(f"Error retrieving {self.model.__name__} list")
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
@@ -88,9 +92,15 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             db.commit()
             db.refresh(db_obj)
             return db_obj
+        except IntegrityError as e:
+            db.rollback()
+            logger.error(f"Integrity error creating {self.model.__name__}: {str(e)}")
+            raise ValidationException("Data integrity error - duplicate entry or invalid data")
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error creating {self.model.__name__}: {str(e)}")
+            if isinstance(e, OperationalError):
+                raise DatabaseError("Database connection error")
             raise DatabaseError(f"Error creating {self.model.__name__}")
 
     def update(
@@ -114,9 +124,15 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             db.commit()
             db.refresh(db_obj)
             return db_obj
+        except IntegrityError as e:
+            db.rollback()
+            logger.error(f"Integrity error updating {self.model.__name__}: {str(e)}")
+            raise ValidationException("Data integrity error - duplicate entry or invalid data")
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error updating {self.model.__name__}: {str(e)}")
+            if isinstance(e, OperationalError):
+                raise DatabaseError("Database connection error")
             raise DatabaseError(f"Error updating {self.model.__name__}")
 
     def remove(self, db: Session, *, id: int) -> ModelType:
@@ -130,6 +146,8 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error deleting {self.model.__name__} with ID {id}: {str(e)}")
+            if isinstance(e, OperationalError):
+                raise DatabaseError("Database connection error")
             raise DatabaseError(f"Error deleting {self.model.__name__}")
 
     def count(

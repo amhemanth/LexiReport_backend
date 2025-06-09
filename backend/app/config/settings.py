@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Security Settings
     SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_ALGORITHM: str = "HS256"
 
     # Database Settings
@@ -142,6 +143,7 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_EMAIL: Optional[EmailStr] = None
     FIRST_SUPERUSER_NAME: Optional[str] = None
     FIRST_SUPERUSER_PASSWORD: Optional[str] = None
+    FIRST_SUPERUSER_FULL_NAME: Optional[str] = None
 
     # AI Settings
     MODEL_PATH: str = Field(

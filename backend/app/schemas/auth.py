@@ -43,18 +43,16 @@ class UserLogin(BaseModel):
     def validate_email(cls, v):
         return validate_email_format(v)
 
-class Token(BaseModel):
-    """Token schema."""
-    access_token: str
-    token_type: str
-    role: UserRole
-    permissions: List[str]
-
 class TokenData(BaseModel):
     """Token data schema."""
+    sub: Optional[str] = None
     email: Optional[str] = None
-    role: Optional[UserRole] = None
-    permissions: Optional[List[str]] = None
+
+class TokenResponse(BaseModel):
+    """Token response schema."""
+    access_token: str
+    refresh_token: str
+    token_type: str
 
 class RegistrationResponse(BaseModel):
     """Registration response schema."""

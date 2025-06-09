@@ -182,6 +182,11 @@ class Report(Base):
         Index("ix_reports_template", "template_id"),
         Index("ix_reports_analysis_type", "analysis_type"),
         Index("ix_reports_metadata_type", "metadata_type"),
+        Index("ix_reports_is_public", "is_public"),
+        Index("ix_reports_is_archived", "is_archived"),
+        Index("ix_reports_created_updated", "created_at", "updated_at"),
+        Index("ix_reports_status_type", "status", "type"),
+        Index("ix_reports_category_type", "category", "type"),
     )
 
     def __repr__(self) -> str:

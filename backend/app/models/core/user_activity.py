@@ -69,6 +69,13 @@ class UserActivity(Base):
         Index("ix_user_activities_entity_id", "entity_id"),
         Index("ix_user_activities_created", "created_at"),
         Index("ix_user_activities_session", "session_id"),
+        Index('idx_user_activity_user', 'user_id'),
+        Index('idx_user_activity_type', 'activity_type'),
+        Index('idx_user_activity_entity', 'entity_type', 'entity_id'),
+        Index('idx_user_activity_created', 'created_at'),
+        Index('idx_user_activity_user_type', 'user_id', 'activity_type'),
+        Index('idx_user_activity_user_created', 'user_id', 'created_at'),
+        Index('idx_user_activity_entity_created', 'entity_type', 'entity_id', 'created_at'),
     )
 
     def __repr__(self) -> str:

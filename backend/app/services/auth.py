@@ -1,3 +1,4 @@
+"""Authentication service."""
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status, Depends
@@ -8,9 +9,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 import uuid
 
-from app.core.security import verify_password, get_password_hash, create_access_token, ALGORITHM
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_token
 from app.repositories.user import user_repository
-from app.schemas.auth import UserCreate, UserLogin, Token, TokenData
+from app.schemas.auth import TokenResponse, TokenData
+from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.models.core.user import User, UserRole
 from app.models.core.user_permission import UserPermission
 from app.models.core.permission import Permission
@@ -22,11 +24,12 @@ from app.core.exceptions import (
     InactiveUserError,
     NotFoundException,
     PermissionException,
-    ValidationException
+    ValidationException,
+    AuthenticationError
 )
 from app.core.permissions import Permission as PermissionEnum
 from app.db.session import get_db
-from app.schemas.user import UserUpdate, UserResponse
+from app.core.logger import logger
 
 settings = get_settings()
 
@@ -112,204 +115,181 @@ class AuthService:
             )
             db.add(user_permission)
 
-    def register(self, db: Session, user_in: UserCreate) -> dict:
+    def register(self, user_data: UserCreate) -> Dict[str, Any]:
         """Register a new user."""
         try:
-            # Check if user exists
-            if user_repository.get_by_email(db, email=user_in.email):
-                raise UserAlreadyExistsError("Email already registered")
+            # Check if user already exists
+            if self.user_repository.get_by_email(self.user_repository.db, email=user_data.email):
+                raise ValidationException("Email already registered")
             
             # Hash password
-            hashed_password = self.get_password_hash(user_in.password)
+            hashed_password = self.get_password_hash(user_data.password)
             
-            # Create user with default role
-            user = user_repository.create(
-                db=db,
-                obj_in=user_in,
-                hashed_password=hashed_password,
-                role=UserRole.USER,
-                is_active=True
+            # Create user
+            user = self.user_repository.create(
+                self.user_repository.db,
+                obj_in=UserCreate(
+                    **user_data.dict(exclude={'password'}),
+                    hashed_password=hashed_password,
+                    is_active=True
+                )
             )
             
-            # Add default permissions
-            default_permissions = [
-                PermissionEnum.API_ACCESS.value,  # Basic API access
-                PermissionEnum.READ_USERS.value,  # Can read own user data
-                PermissionEnum.WRITE_USERS.value  # Can update own user data
-            ]
-            
-            for permission in default_permissions:
-                self._create_user_permission(db, user.id, permission)
-            
-            db.commit()
+            # Assign default permissions
+            self._assign_default_permissions(user.id)
             
             return {
-                "message": "Registration successful",
-                "email": user.email
+                "message": "User registered successfully",
+                "user_id": str(user.id)
             }
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise DatabaseError(f"Error during user registration: {str(e)}")
+            
+        except ValidationException as e:
+            logger.error(f"Validation error during registration: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during registration: {str(e)}")
+            raise DatabaseError("Failed to register user")
 
-    def login(self, db: Session, user_in: UserLogin) -> Token:
-        """Authenticate user and return token."""
+    def _validate_password_strength(self, password: str) -> bool:
+        """Validate password strength."""
+        if len(password) < 8:
+            return False
+        
+        has_upper = any(c.isupper() for c in password)
+        has_lower = any(c.islower() for c in password)
+        has_digit = any(c.isdigit() for c in password)
+        has_special = any(not c.isalnum() for c in password)
+        
+        return all([has_upper, has_lower, has_digit, has_special])
+
+    def login(self, email: str, password: str) -> TokenResponse:
+        """Authenticate user and return tokens."""
         try:
             # Get user
-            user = user_repository.get_by_email(db, email=user_in.email)
+            user = self.user_repository.get_by_email(self.user_repository.db, email=email)
             if not user:
-                raise InvalidCredentialsError()
-            
-            # Get current password
-            current_password = user_repository.get_current_password(db, user.id)
-            if not current_password:
-                raise InvalidCredentialsError()
+                raise AuthenticationError("Invalid credentials")
             
             # Verify password
-            if not self.verify_password(user_in.password, current_password.hashed_password):
-                raise InvalidCredentialsError()
+            if not verify_password(password, user.hashed_password):
+                raise AuthenticationError("Invalid credentials")
             
             # Check if user is active
             if not user.is_active:
-                raise InactiveUserError()
+                raise AuthenticationError("User account is inactive")
             
-            # Create access token with role and permissions
-            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = self.create_access_token(
-                data={
-                    "sub": user.email,
-                    "role": user.role.value,
-                    "permissions": user.get_permissions()
-                },
-                expires_delta=access_token_expires
+            # Generate tokens
+            access_token = create_access_token(
+                data={"sub": str(user.id), "email": user.email}
+            )
+            refresh_token = create_refresh_token(
+                data={"sub": str(user.id)}
             )
             
-            return Token(
+            return TokenResponse(
                 access_token=access_token,
-                token_type="bearer",
-                role=user.role,
-                permissions=user.get_permissions()
+                refresh_token=refresh_token,
+                token_type="bearer"
             )
-        except SQLAlchemyError as e:
-            raise DatabaseError(f"Error during user login: {str(e)}")
+            
+        except AuthenticationError as e:
+            logger.error(f"Authentication error during login: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during login: {str(e)}")
+            raise DatabaseError("Failed to authenticate user")
 
-    def authenticate_user(self, db: Session, email: str, password: str) -> Optional[UserResponse]:
-        """Authenticate a user."""
-        user = self.user_repository.get_by_email(db, email=email)
-        if not user:
-            return None
-        if not self.verify_password(password, user.hashed_password):
-            return None
-        return UserResponse.from_orm(user)
-
-    def get_current_user(self, db: Session, token: str) -> Optional[UserResponse]:
-        """Get the current user from a JWT token."""
-        payload = self.verify_token(token)
-        if payload is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        user = self.get_user_by_id(db, user_id=uuid.UUID(user_id))
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return user
-
-    def get_current_active_user(self, db: Session, token: str) -> Optional[UserResponse]:
-        """Get the current active user from a JWT token."""
-        user = self.get_current_user(db, token=token)
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
-            )
-        return user
-
-    def get_current_active_superuser(self, db: Session, token: str) -> Optional[UserResponse]:
-        """Get the current active superuser from a JWT token."""
-        user = self.get_current_active_user(db, token=token)
-        if not user.is_superuser:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="The user doesn't have enough privileges"
-            )
-        return user
-
-    def get_user_by_id(self, db: Session, *, user_id: uuid.UUID) -> Optional[UserResponse]:
-        """Get a user by ID."""
-        user = self.user_repository.get(db, id=user_id)
-        if not user:
-            raise NotFoundException("User not found")
-        return UserResponse.from_orm(user)
-
-    def get_user_by_email(self, db: Session, *, email: str) -> Optional[UserResponse]:
-        """Get a user by email."""
-        user = self.user_repository.get_by_email(db, email=email)
-        if not user:
-            raise NotFoundException("User not found")
-        return UserResponse.from_orm(user)
-
-    def get_users(
-        self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> list[UserResponse]:
-        """Get a list of users."""
-        users = self.user_repository.get_multi(db, skip=skip, limit=limit)
-        return [UserResponse.from_orm(user) for user in users]
-
-    def create_user(self, db: Session, *, obj_in: UserCreate) -> UserResponse:
-        """Create a new user."""
-        # Check if user with email already exists
-        if self.user_repository.get_by_email(db, email=obj_in.email):
-            raise ValidationException("Email already registered")
-        
-        # Create new user
-        user = User(
-            email=obj_in.email,
-            hashed_password=self.get_password_hash(obj_in.password),
-            full_name=obj_in.full_name,
-            is_active=True,
-            is_superuser=False
-        )
-        user = self.user_repository.create(db, obj_in=user)
-        return UserResponse.from_orm(user)
-
-    def update_user(
-        self, db: Session, *, user_id: uuid.UUID, obj_in: UserUpdate
-    ) -> UserResponse:
-        """Update a user."""
-        user = self.user_repository.get(db, id=user_id)
-        if not user:
-            raise NotFoundException("User not found")
-        
-        # Update user
-        user = self.user_repository.update(db, db_obj=user, obj_in=obj_in)
-        return UserResponse.from_orm(user)
-
-    def delete_user(self, db: Session, *, user_id: uuid.UUID) -> None:
-        """Delete a user."""
-        user = self.user_repository.get(db, id=user_id)
-        if not user:
-            raise NotFoundException("User not found")
-        self.user_repository.remove(db, id=user_id)
-
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify a JWT token."""
+    def refresh_token(self, refresh_token: str) -> TokenResponse:
+        """Refresh access token using refresh token."""
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            return payload
-        except JWTError:
-            return None
+            # Verify refresh token
+            payload = verify_token(refresh_token)
+            if not payload:
+                raise AuthenticationError("Invalid refresh token")
+            
+            # Get user
+            user = self.user_repository.get(self.user_repository.db, id=payload.get("sub"))
+            if not user:
+                raise AuthenticationError("User not found")
+            
+            # Generate new access token
+            access_token = create_access_token(
+                data={"sub": str(user.id), "email": user.email}
+            )
+            
+            return TokenResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer"
+            )
+            
+        except AuthenticationError as e:
+            logger.error(f"Authentication error during token refresh: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during token refresh: {str(e)}")
+            raise DatabaseError("Failed to refresh token")
+
+    def get_current_user(self, token: str) -> User:
+        """Get current user from token."""
+        try:
+            # Verify token
+            payload = verify_token(token)
+            if not payload:
+                raise AuthenticationError("Invalid token")
+            
+            # Get user
+            user = self.user_repository.get(self.user_repository.db, id=payload.get("sub"))
+            if not user:
+                raise AuthenticationError("User not found")
+            
+            return user
+            
+        except AuthenticationError as e:
+            logger.error(f"Authentication error getting current user: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting current user: {str(e)}")
+            raise DatabaseError("Failed to get current user")
+
+    def _assign_default_permissions(self, user_id: str) -> None:
+        """Assign default permissions to user."""
+        try:
+            # Get default role
+            default_role = self.user_repository.db.query(UserRole).filter(
+                UserRole.name == "user"
+            ).first()
+            
+            if default_role:
+                # Create user role
+                user_role = UserRole(
+                    user_id=user_id,
+                    role_id=default_role.id,
+                    is_primary=True
+                )
+                self.user_repository.db.add(user_role)
+                
+                # Get role permissions
+                role_permissions = self.user_repository.db.query(Permission).join(
+                    UserPermission
+                ).filter(
+                    UserPermission.role_id == default_role.id
+                ).all()
+                
+                # Assign permissions to user
+                for permission in role_permissions:
+                    user_permission = UserPermission(
+                        user_id=user_id,
+                        permission_id=permission.id
+                    )
+                    self.user_repository.db.add(user_permission)
+                
+                self.user_repository.db.commit()
+                
+        except Exception as e:
+            self.user_repository.db.rollback()
+            logger.error(f"Error assigning default permissions: {str(e)}")
+            raise DatabaseError("Failed to assign default permissions")
 
 # Create service instance
 auth_service = AuthService(user_repository) 

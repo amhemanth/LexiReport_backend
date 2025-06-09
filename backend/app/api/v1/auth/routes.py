@@ -1,43 +1,41 @@
+"""Authentication routes."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.deps import get_db
-from app.schemas.auth import UserCreate, UserLogin, Token, RegistrationResponse
-from app.services.auth import AuthService
-from app.repositories.user import UserRepository
-from app.models.core.user import User
-
-import uuid
+from app.services.auth import auth_service
+from app.schemas.auth import TokenResponse, UserLogin
+from app.schemas.user import UserCreate, UserResponse
 
 router = APIRouter()
 
-user_repository = UserRepository(User)
-auth_service = AuthService(user_repository)
-
-@router.post("/register", response_model=RegistrationResponse)
+@router.post("/register", response_model=dict)
 def register(
-    *,
-    db: Session = Depends(get_db),
     user_in: UserCreate,
-    auth_service: AuthService = Depends(lambda: auth_service)
+    db: Session = Depends(get_db)
 ) -> dict:
     """Register a new user."""
-    result = auth_service.register(db=db, user_in=user_in)
-    user = auth_service.get_user_by_email(db, email=result["email"])
-    return {
-        "message": result["message"],
-        "email": result["email"],
-        "role": user.role,
-        "permissions": user.get_permissions()
-    }
+    return auth_service.register(user_in)
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenResponse)
 def login(
-    db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
-    auth_service: AuthService = Depends(lambda: auth_service)
-) -> Token:
-    """OAuth2 compatible token login, get an access token for future requests."""
-    # OAuth2 form uses 'username' field for email
-    user_in = UserLogin(email=form_data.username, password=form_data.password)
-    return auth_service.login(db=db, user_in=user_in) 
+    db: Session = Depends(get_db)
+) -> TokenResponse:
+    """Login user and return tokens."""
+    return auth_service.login(form_data.username, form_data.password)
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(
+    refresh_token: str,
+    db: Session = Depends(get_db)
+) -> TokenResponse:
+    """Refresh access token."""
+    return auth_service.refresh_token(refresh_token)
+
+@router.get("/me", response_model=UserResponse)
+def read_users_me(
+    current_user: UserResponse = Depends(auth_service.get_current_user)
+) -> UserResponse:
+    """Get current user."""
+    return current_user 

@@ -38,7 +38,9 @@ from app.config.settings import get_settings
 from app.core.exceptions import (
     NotFoundException,
     PermissionException,
-    ValidationException
+    ValidationException,
+    DatabaseError,
+    AIProcessingError
 )
 
 settings = get_settings()
@@ -59,12 +61,7 @@ class ReportService:
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    async def create_report(
-        self,
-        user: User,
-        report_in: ReportCreate,
-        file: Optional[UploadFile] = None
-    ) -> ReportResponse:
+    async def create_report(self, db: Session, report_in: ReportCreate, file: UploadFile, user: User) -> ReportResponse:
         """Create a new report."""
         try:
             report_data = report_in.dict()
@@ -96,23 +93,38 @@ class ReportService:
             )
             
             # Save file
-            with open(report.file_path, "wb") as f:
-                await file.seek(0)
-                while chunk := await file.read(1024 * 1024):  # 1MB chunks
-                    f.write(chunk)
+            try:
+                with open(report.file_path, "wb") as f:
+                    await file.seek(0)
+                    while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                        f.write(chunk)
+            except IOError as e:
+                raise ValidationException(f"Error saving file: {str(e)}")
             
             # Save report to database
-            report = report_repository.create(self.db, obj_in=report)
+            try:
+                report = report_repository.create(self.db, obj_in=report)
+            except DatabaseError as e:
+                # Clean up file if database operation fails
+                if os.path.exists(report.file_path):
+                    os.remove(report.file_path)
+                raise DatabaseError(f"Error saving report to database: {str(e)}")
             
             # Process report asynchronously
-            asyncio.create_task(self.process_report(self.db, report.id))
+            try:
+                asyncio.create_task(self.process_report(self.db, report.id))
+            except Exception as e:
+                logger.error(f"Error scheduling report processing: {str(e)}")
+                # Don't raise here as the report is already created
             
             return ReportResponse.from_orm(report)
+        except ValidationException as e:
+            raise e
+        except DatabaseError as e:
+            raise e
         except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error creating report: {str(e)}"
-            )
+            logger.error(f"Unexpected error creating report: {str(e)}", exc_info=True)
+            raise DatabaseError(f"Error creating report: {str(e)}")
 
     async def list_reports(
         self,
@@ -387,34 +399,42 @@ class ReportService:
 
     async def _handle_file_upload(self, report_id: uuid.UUID, file: UploadFile) -> None:
         """Handle file upload for a report."""
-        # Validate file size
-        file_size = 0
-        chunk_size = 1024 * 1024  # 1MB chunks
-        while chunk := await file.read(chunk_size):
-            file_size += len(chunk)
-            if file_size > self.max_upload_size:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"File size exceeds maximum allowed size of {self.max_upload_size} bytes"
-                )
-        
-        # Validate file extension
-        file_extension = os.path.splitext(file.filename)[1].lower().lstrip('.')
-        if file_extension not in self.allowed_extensions:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File extension not allowed. Allowed extensions: {', '.join(self.allowed_extensions)}"
-            )
-        
-        # Create upload directory if it doesn't exist
-        os.makedirs(self.upload_dir, exist_ok=True)
-        
-        # Save file
-        file_path = os.path.join(self.upload_dir, f"{report_id}_{file.filename}")
-        with open(file_path, "wb") as buffer:
-            await file.seek(0)
+        try:
+            # Validate file size
+            file_size = 0
+            chunk_size = 1024 * 1024  # 1MB chunks
             while chunk := await file.read(chunk_size):
-                buffer.write(chunk)
+                file_size += len(chunk)
+                if file_size > self.max_upload_size:
+                    raise ValidationException(f"File size exceeds maximum allowed size of {self.max_upload_size} bytes")
+            
+            # Validate file extension
+            file_extension = os.path.splitext(file.filename)[1].lower().lstrip('.')
+            if file_extension not in self.allowed_extensions:
+                raise ValidationException(f"File extension not allowed. Allowed extensions: {', '.join(self.allowed_extensions)}")
+            
+            # Create upload directory if it doesn't exist
+            try:
+                os.makedirs(self.upload_dir, exist_ok=True)
+            except OSError as e:
+                raise DatabaseError(f"Error creating upload directory: {str(e)}")
+            
+            # Save file
+            file_path = os.path.join(self.upload_dir, f"{report_id}_{file.filename}")
+            try:
+                with open(file_path, "wb") as buffer:
+                    await file.seek(0)
+                    while chunk := await file.read(chunk_size):
+                        buffer.write(chunk)
+            except IOError as e:
+                raise DatabaseError(f"Error saving file: {str(e)}")
+        except ValidationException as e:
+            raise e
+        except DatabaseError as e:
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error handling file upload: {str(e)}", exc_info=True)
+            raise DatabaseError(f"Error handling file upload: {str(e)}")
 
     async def _delete_report_files(self, report_id: uuid.UUID) -> None:
         """Delete files associated with a report."""
@@ -430,6 +450,7 @@ class ReportService:
 
     async def process_report(self, db: Session, report_id: uuid.UUID) -> None:
         """Process a report asynchronously."""
+        report = None
         try:
             report = self.db.query(Report).filter(Report.id == report_id).first()
             if not report:
@@ -441,7 +462,10 @@ class ReportService:
             self.db.commit()
 
             # Process based on file type
-            content = await self._process_file(report)
+            try:
+                content = await self._process_file(report)
+            except Exception as e:
+                raise AIProcessingError(f"Error processing file content: {str(e)}")
 
             # Update report with processed content
             update_data = {
@@ -452,14 +476,23 @@ class ReportService:
             self.db.add(report)
             self.db.commit()
 
-        except Exception as e:
-            # Update status to failed
+        except NotFoundException as e:
+            raise e
+        except AIProcessingError as e:
             if report:
                 report.status = "failed"
                 report.error = str(e)
                 self.db.add(report)
                 self.db.commit()
-            raise ValidationException(f"Error processing report: {str(e)}")
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error processing report: {str(e)}", exc_info=True)
+            if report:
+                report.status = "failed"
+                report.error = str(e)
+                self.db.add(report)
+                self.db.commit()
+            raise DatabaseError(f"Error processing report: {str(e)}")
 
     async def _process_file(self, report: Report) -> Dict[str, Any]:
         """Process the report file based on its type."""

@@ -28,6 +28,7 @@ from app.core.exceptions import (
     AIProcessingError
 )
 from app.core.model_cache import precache_models
+from sqlalchemy.exc import DatabaseError
 
 settings = get_settings()
 
@@ -72,6 +73,14 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 app.add_exception_handler(LexiReportException, lexireport_exception_handler)
 app.add_exception_handler(AIProcessingError, ai_processing_exception_handler)
+app.add_exception_handler(DatabaseError, lambda request, exc: JSONResponse(
+    status_code=500,
+    content={"detail": str(exc.detail), "error_type": "database_error"}
+))
+app.add_exception_handler(ValidationException, lambda request, exc: JSONResponse(
+    status_code=400,
+    content={"detail": str(exc.detail), "error_type": "validation_error"}
+))
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -85,7 +94,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             ctx['error'] = str(ctx['error'])
     return JSONResponse(
         status_code=422,
-        content={"detail": errors}
+        content={
+            "detail": errors,
+            "error_type": "validation_error"
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions."""
+    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_type": "internal_error"
+        }
     )
 
 @app.get("/")
