@@ -440,10 +440,20 @@ def create_users(db: Session, roles: Dict[str, Role]) -> Dict[str, User]:
         db.add(admin_user)
         db.flush()  # Flush to get the ID
         
+        # Create admin password
+        admin_password = Password(
+            user_id=admin_user.id,
+            hashed_password=get_password_hash("admin123"),  # Default admin password
+            is_current=True,
+            password_updated_at=datetime.utcnow()
+        )
+        db.add(admin_password)
+        
         # Create user role association
         user_role = UserRole(
             user_id=admin_user.id,
-            role_id=roles["admin"].id
+            role_id=roles["admin"].id,
+            is_primary=True  # Set as primary role
         )
         db.add(user_role)
         users["admin@example.com"] = admin_user
@@ -463,10 +473,20 @@ def create_users(db: Session, roles: Dict[str, Role]) -> Dict[str, User]:
         db.add(manager_user)
         db.flush()  # Flush to get the ID
         
+        # Create manager password
+        manager_password = Password(
+            user_id=manager_user.id,
+            hashed_password=get_password_hash("manager123"),  # Default manager password
+            is_current=True,
+            password_updated_at=datetime.utcnow()
+        )
+        db.add(manager_password)
+        
         # Create user role association
         user_role = UserRole(
             user_id=manager_user.id,
-            role_id=roles["manager"].id
+            role_id=roles["manager"].id,
+            is_primary=True  # Set as primary role
         )
         db.add(user_role)
         users["manager@example.com"] = manager_user
@@ -486,10 +506,20 @@ def create_users(db: Session, roles: Dict[str, Role]) -> Dict[str, User]:
         db.add(analyst_user)
         db.flush()  # Flush to get the ID
         
+        # Create analyst password
+        analyst_password = Password(
+            user_id=analyst_user.id,
+            hashed_password=get_password_hash("analyst123"),  # Default analyst password
+            is_current=True,
+            password_updated_at=datetime.utcnow()
+        )
+        db.add(analyst_password)
+        
         # Create user role association
         user_role = UserRole(
             user_id=analyst_user.id,
-            role_id=roles["analyst"].id
+            role_id=roles["analyst"].id,
+            is_primary=True  # Set as primary role
         )
         db.add(user_role)
         users["analyst@example.com"] = analyst_user
@@ -509,10 +539,20 @@ def create_users(db: Session, roles: Dict[str, Role]) -> Dict[str, User]:
         db.add(viewer_user)
         db.flush()  # Flush to get the ID
         
+        # Create viewer password
+        viewer_password = Password(
+            user_id=viewer_user.id,
+            hashed_password=get_password_hash("viewer123"),  # Default viewer password
+            is_current=True,
+            password_updated_at=datetime.utcnow()
+        )
+        db.add(viewer_password)
+        
         # Create user role association
         user_role = UserRole(
             user_id=viewer_user.id,
-            role_id=roles["viewer"].id
+            role_id=roles["viewer"].id,
+            is_primary=True  # Set as primary role
         )
         db.add(user_role)
         users["viewer@example.com"] = viewer_user

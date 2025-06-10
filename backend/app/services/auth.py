@@ -368,11 +368,18 @@ class AuthService:
             # Get user permissions
             permissions = [p.name for p in user.permissions]
 
-            # Get primary role
+            # Get primary role with proper hierarchy
             primary_role = UserRole.USER  # Default role
-            if user.roles:
-                # Get the first role as primary role
-                primary_role = user.roles[0].name
+            if user.user_roles:
+                # First try to find a primary role
+                primary_user_role = next((ur for ur in user.user_roles if ur.is_primary), None)
+                if primary_user_role:
+                    primary_role = primary_user_role.role.name
+                else:
+                    # If no primary role, get the highest role in hierarchy
+                    role_hierarchy = {UserRole.ADMIN: 3, UserRole.MANAGER: 2, UserRole.USER: 1}
+                    highest_role = max(user.user_roles, key=lambda ur: role_hierarchy.get(ur.role.name, 0))
+                    primary_role = highest_role.role.name
 
             # Create user response
             user_response = UserResponse(
