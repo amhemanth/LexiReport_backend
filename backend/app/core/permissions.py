@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Callable, List, Dict
+from typing import Optional, Callable, List, Dict, Any
 from fastapi import HTTPException, status, Depends
 from functools import wraps
 from sqlalchemy.orm import Session
@@ -9,8 +9,7 @@ import json
 
 from app.models.core.user import User
 from app.models.core.enums import UserRole
-from app.db.session import get_db
-from app.core.deps import get_current_user, get_current_active_user
+from app.core.deps import get_db, get_current_user, get_current_active_user
 from app.core.exceptions import PermissionException
 from app.core.redis import get_redis_client
 

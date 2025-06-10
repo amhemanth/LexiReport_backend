@@ -1,7 +1,7 @@
 """Health check endpoints."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.db.session import get_db
+from app.core.deps import get_db
 from app.core.redis import redis_manager
 from app.core.logger import logger
 

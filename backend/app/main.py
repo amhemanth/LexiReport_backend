@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from app.api.v1.api import api_router
 from app.config.settings import get_settings
-from app.db.session import get_db
+from app.core.deps import get_db
 from app.core.handlers import (
     validation_exception_handler,
     general_exception_handler,

@@ -262,22 +262,12 @@ class AuthService:
                     is_superuser=False,
                     role=UserRole.USER,
                     is_active=True,
-                    email_verified=True  # Set email as verified by default
+                    email_verified=True  # Disable email verification
                 ),
                 hashed_password=hashed_password,
                 role=UserRole.USER,
                 is_active=True
             )
-            
-            # Generate verification token (for future use)
-            verification_token = generate_email_verification_token(user.email)
-            # Store token in Redis for future verification if needed (24 hours expiration)
-            if self.redis_client:
-                self.redis_client.setex(
-                    f"email_verification:{user.email}",
-                    24 * 3600,  # 24 hours in seconds
-                    verification_token
-                )
             
             # Assign default permissions
             self._assign_default_permissions(db, user.id)

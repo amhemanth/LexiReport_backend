@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from app.config.settings import get_settings
-from app.db.session import get_db
+from app.db.session import get_db_session, get_db
 from app.models.core.user import User
 from app.repositories.user import user_repository
 from app.schemas.auth import TokenData
@@ -26,7 +26,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 async def get_current_user(
     request: Request,
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ) -> User:
     """Get current user from token."""
     try:
@@ -63,6 +63,8 @@ async def get_current_user(
         
     except JWTError:
         raise InvalidTokenError()
+    finally:
+        db.close()
 
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),
@@ -89,7 +91,7 @@ async def get_current_active_superuser(
 async def get_current_user_with_session(
     request: Request,
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ) -> Tuple[User, str]:
     """Get current user and session ID from token."""
     try:
