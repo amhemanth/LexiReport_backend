@@ -15,7 +15,7 @@ from app.config.settings import get_settings
 from app.db.base import Base  # Import from base.py which has all models
 from app.db.base import *  # Import all models
 from app.models import *  # Import all models from models package
-from app.db.scripts.seed_db import seed as seed_database  # Import seed function
+from app.db.scripts.seed_db import seed_database  # Import seed_database function
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -128,7 +128,7 @@ def run_migrations_online() -> None:
                 from app.db.session import SessionLocal
                 db = SessionLocal()
                 try:
-                    seed_database(db)
+                    seed_database()
                 finally:
                     db.close()
 

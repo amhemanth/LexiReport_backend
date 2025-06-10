@@ -22,6 +22,8 @@ class Report(Base):
     category: Mapped[ReportTypeCategory] = mapped_column(SQLEnum(ReportTypeCategory), nullable=False, default=ReportTypeCategory.ANALYTICAL)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_scheduled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_exported: Mapped[bool] = mapped_column(Boolean, default=False)
     
     # Analysis fields
     analysis_type: Mapped[Optional[AnalysisType]] = mapped_column(SQLEnum(AnalysisType))
@@ -64,12 +66,12 @@ class Report(Base):
         back_populates="updated_reports",
         passive_deletes=True
     )
-    content_obj: Mapped[Optional["ReportContent"]] = relationship(
+    contents: Mapped[List["ReportContent"]] = relationship(
         "ReportContent",
         back_populates="report",
-        uselist=False,
         cascade="all, delete-orphan",
-        passive_deletes=True
+        passive_deletes=True,
+        order_by="desc(ReportContent.version_number)"
     )
     insights: Mapped[List["ReportInsight"]] = relationship(
         "ReportInsight",
@@ -83,33 +85,24 @@ class Report(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    versions: Mapped[List["ReportVersion"]] = relationship(
-        "ReportVersion",
+    comments: Mapped[List["Comment"]] = relationship(
+        "Comment",
         back_populates="report",
         cascade="all, delete-orphan",
-        passive_deletes=True,
-        order_by="desc(ReportVersion.version_number)"
-    )
-    comments: Mapped[List["ReportComment"]] = relationship(
-        "ReportComment",
-        back_populates="report",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        primaryjoin="and_(Report.id == ReportComment.report_id, ReportComment.parent_id == None)"
+        passive_deletes=True
     )
     activities: Mapped[List["UserActivity"]] = relationship(
         "UserActivity",
-        primaryjoin="and_(foreign(UserActivity.entity_type) == 'report', foreign(UserActivity.entity_id) == Report.id)",
         back_populates="report",
+        cascade="all, delete-orphan",
         passive_deletes=True,
-        overlaps="comment"
+        foreign_keys="UserActivity.report_id"
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog",
-        primaryjoin="and_(foreign(AuditLog.entity_type) == 'report', foreign(AuditLog.entity_id) == Report.id)",
         back_populates="report",
-        passive_deletes=True,
-        overlaps="comment"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     tags: Mapped[List["EntityTag"]] = relationship(
         "EntityTag",
@@ -120,7 +113,6 @@ class Report(Base):
     )
     bi_integrations: Mapped[List["BIIntegration"]] = relationship(
         "BIIntegration",
-        primaryjoin="and_(foreign(BIIntegration.entity_type) == 'report', foreign(BIIntegration.entity_id) == Report.id)",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
@@ -150,43 +142,35 @@ class Report(Base):
     )
     notifications: Mapped[List["Notification"]] = relationship(
         "Notification",
-        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == Report.id)",
+        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == remote(Report.id))",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
     attachments: Mapped[List["FileStorage"]] = relationship(
         "FileStorage",
-        primaryjoin="and_(foreign(FileStorage.entity_type) == 'report', foreign(FileStorage.entity_id) == Report.id)",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
     voice_commands: Mapped[List["VoiceCommand"]] = relationship(
         "VoiceCommand",
-        primaryjoin="and_(foreign(VoiceCommand.entity_type) == 'report', foreign(VoiceCommand.entity_id) == Report.id)",
+        primaryjoin="and_(foreign(VoiceCommand.entity_type) == 'report', foreign(VoiceCommand.entity_id) == remote(Report.id))",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
 
-    # Indexes
+    # Add indexes for common queries
     __table_args__ = (
-        Index("ix_reports_created_by", "created_by"),
-        Index("ix_reports_updated_by", "updated_by"),
-        Index("ix_reports_status", "status"),
-        Index("ix_reports_type", "type"),
-        Index("ix_reports_category", "category"),
-        Index("ix_reports_created", "created_at"),
-        Index("ix_reports_updated", "updated_at"),
-        Index("ix_reports_template", "template_id"),
-        Index("ix_reports_analysis_type", "analysis_type"),
-        Index("ix_reports_metadata_type", "metadata_type"),
-        Index("ix_reports_is_public", "is_public"),
-        Index("ix_reports_is_archived", "is_archived"),
-        Index("ix_reports_created_updated", "created_at", "updated_at"),
-        Index("ix_reports_status_type", "status", "type"),
-        Index("ix_reports_category_type", "category", "type"),
+        Index('idx_report_status', 'status'),
+        Index('idx_report_type', 'type'),
+        Index('idx_report_category', 'category'),
+        Index('idx_report_created', 'created_at'),
+        Index('idx_report_public', 'is_public'),
+        Index('idx_report_archived', 'is_archived'),
+        Index('idx_report_scheduled', 'is_scheduled'),
+        Index('idx_report_exported', 'is_exported'),
     )
 
     def __repr__(self) -> str:

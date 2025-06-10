@@ -13,7 +13,8 @@ class ErrorLog(Base):
     error_message: Mapped[str] = mapped_column(Text, nullable=False)
     stack_trace: Mapped[str] = mapped_column(Text, nullable=True)
     context_data: Mapped[dict] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Add indexes for common queries
     __table_args__ = (

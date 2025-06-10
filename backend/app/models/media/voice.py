@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.base_class import Base
-from app.models.core.user import User
 
 
 class VoiceProfile(Base):
@@ -20,8 +19,8 @@ class VoiceProfile(Base):
     voice_id: Mapped[str] = mapped_column(String, nullable=False)
     voice_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="voice_profile")

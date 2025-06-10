@@ -6,23 +6,24 @@ import uuid
 from sqlalchemy import String, ForeignKey, Enum as SQLEnum, JSON, Column, Integer, DateTime, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum as PyEnum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from app.db.base_class import Base
 from app.models.core.user import User
-from app.models.integration.enums import BIPlatformType, SyncStatus
+from app.models.integration.enums import BIPlatformType, IntegrationStatus, SyncFrequency
+from app.models.common.enums import SyncStatus
 
 
 class BIConnection(Base):
     __tablename__ = "bi_connections"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, nullable=False)
     platform_type: Mapped[BIPlatformType] = mapped_column(SQLEnum(BIPlatformType), nullable=False)
     connection_details: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships with cascade rules
     dashboards: Mapped[List["BIDashboard"]] = relationship(
@@ -45,14 +46,14 @@ class BIConnection(Base):
 class BIDashboard(Base):
     __tablename__ = "bi_dashboards"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, nullable=False)
     dashboard_id: Mapped[str] = mapped_column(String, nullable=False)
-    connection_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("bi_connections.id", ondelete="CASCADE"), nullable=False)
+    connection_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("bi_connections.id", ondelete="CASCADE"), nullable=False)
     sync_status: Mapped[SyncStatus] = mapped_column(SQLEnum(SyncStatus), default=SyncStatus.PENDING)
     last_sync: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     connection: Mapped["BIConnection"] = relationship("BIConnection", back_populates="dashboards")
@@ -75,8 +76,8 @@ class BIPlatformType(str, PyEnum):
     OTHER = "other"
 
 
-class SyncStatus(str, PyEnum):
-    """Sync status enum"""
+class IntegrationStatus(str, PyEnum):
+    """Integration status enum"""
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -84,12 +85,21 @@ class SyncStatus(str, PyEnum):
     CANCELLED = "cancelled"
 
 
+class SyncFrequency(str, PyEnum):
+    """Sync frequency enum"""
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+
+
 class BIIntegration(Base):
     """BI integration model"""
     
     __tablename__ = "bi_integrations"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     platform_type: Mapped[BIPlatformType] = mapped_column(SQLEnum(BIPlatformType), nullable=False)
     api_key: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -98,11 +108,10 @@ class BIIntegration(Base):
     workspace_id: Mapped[Optional[str]] = mapped_column(String(100))
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    report_id: Mapped[Optional[uuid.UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"))
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Add indexes for common queries
     __table_args__ = (
@@ -110,19 +119,25 @@ class BIIntegration(Base):
         Index('idx_bi_integration_active', 'is_active'),
         Index('idx_bi_integration_created', 'created_at'),
         Index('idx_bi_integration_creator', 'created_by'),
-        Index('idx_bi_integration_entity', 'entity_type', 'entity_id'),
+        Index('idx_bi_integration_report', 'report_id'),
     )
 
     # Relationships
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
+    creator: Mapped[Optional["User"]] = relationship(
+        "User", 
+        foreign_keys=[created_by],
+        back_populates="bi_integrations",
+        passive_deletes=True
+    )
     sync_jobs: Mapped[List["BISyncJob"]] = relationship(
         "BISyncJob",
         back_populates="integration",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     report: Mapped[Optional["Report"]] = relationship(
         "Report",
-        primaryjoin="and_(foreign(BIIntegration.entity_type) == 'report', foreign(BIIntegration.entity_id) == Report.id)",
+        foreign_keys=[report_id],
         back_populates="bi_integrations",
         passive_deletes=True
     )
@@ -136,14 +151,14 @@ class BISyncJob(Base):
     
     __tablename__ = "bi_sync_jobs"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    integration_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("bi_integrations.id", ondelete="CASCADE"), nullable=False)
-    report_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    integration_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("bi_integrations.id", ondelete="CASCADE"), nullable=False)
+    report_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
     sync_status: Mapped[SyncStatus] = mapped_column(SQLEnum(SyncStatus), default=SyncStatus.PENDING)
     error_message: Mapped[Optional[str]] = mapped_column(String)
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Add indexes for common queries
     __table_args__ = (

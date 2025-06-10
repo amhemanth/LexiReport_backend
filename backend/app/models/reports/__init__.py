@@ -7,8 +7,6 @@ from app.models.reports.report import Report, ReportShare
 from app.models.reports.report_content import ReportContent
 from app.models.reports.report_insight import ReportInsight
 from app.models.reports.report_query import ReportQuery
-from app.models.reports.report_version import ReportVersion
-from app.models.reports.report_comment import ReportComment
 from app.models.reports.report_template import ReportTemplate
 from app.models.reports.report_schedule import ReportSchedule
 from app.models.reports.report_export import ReportExport
@@ -17,7 +15,8 @@ from app.models.reports.enums import (
     ReportStatus,
     ReportTypeCategory,
     AnalysisType,
-    MetadataType
+    MetadataType,
+    ReportExportStatus
 )
 
 __all__ = [
@@ -26,8 +25,6 @@ __all__ = [
     "ReportContent",
     "ReportInsight",
     "ReportQuery",
-    "ReportVersion",
-    "ReportComment",
     "ReportTemplate",
     "ReportSchedule",
     "ReportExport",
@@ -35,5 +32,6 @@ __all__ = [
     "ReportStatus",
     "ReportTypeCategory",
     "AnalysisType",
-    "MetadataType"
+    "MetadataType",
+    "ReportExportStatus"
 ] 

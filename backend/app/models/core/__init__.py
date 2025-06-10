@@ -1,28 +1,29 @@
 """
 Core models package initialization.
-This module imports and exposes all core models from the application.
+This module imports and exposes all core models.
 """
 
 from app.models.core.user import User
-from app.models.core.password import Password
-from app.models.core.permission import Permission, Role, RolePermission
-from app.models.core.user_permission import UserPermission
+from app.models.core.permission import Role, Permission, RolePermission
 from app.models.core.user_role import UserRole
+from app.models.core.user_permission import UserPermission
 from app.models.core.user_preferences import UserPreferences
-from app.models.core.user_activity import UserActivity, ActivityType
+from app.models.core.password import Password
+from app.models.core.login_attempt import LoginAttempt
 
 __all__ = [
-    # User related
+    # User models
     "User",
-    "Password",
-    "UserPreferences",
-    "UserActivity",
-    "ActivityType",
-    "UserRole",
     
-    # Permission related
-    "Permission",
+    # Role and Permission models
     "Role",
+    "Permission",
+    "UserRole",
+    "UserPermission",
     "RolePermission",
-    "UserPermission"
+    
+    # User settings models
+    "UserPreferences",
+    "Password",
+    "LoginAttempt",
 ] 

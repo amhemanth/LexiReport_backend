@@ -1,28 +1,26 @@
 from enum import Enum
 
 class FileType(str, Enum):
-    """Types of files."""
+    """File type enum"""
     DOCUMENT = "document"
-    SPREADSHEET = "spreadsheet"
-    PRESENTATION = "presentation"
     IMAGE = "image"
-    AUDIO = "audio"
     VIDEO = "video"
+    AUDIO = "audio"
     ARCHIVE = "archive"
     OTHER = "other"
 
 class FileStatus(str, Enum):
-    """Status of files."""
-    ACTIVE = "active"
-    ARCHIVED = "archived"
-    DELETED = "deleted"
+    """File status enum"""
     PENDING = "pending"
+    UPLOADING = "uploading"
     PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    DELETED = "deleted"
 
 class StorageType(str, Enum):
-    """Types of storage."""
+    """Storage type enum"""
     LOCAL = "local"
     S3 = "s3"
     AZURE = "azure"
-    GCP = "gcp"
-    CUSTOM = "custom" 
+    GCS = "gcs" 

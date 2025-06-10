@@ -4,7 +4,17 @@ This module imports and exposes all models from the application.
 """
 
 # Core models
-from app.models.core import *
+from app.models.core import (
+    User,
+    Role,
+    Permission,
+    UserRole,
+    UserPermission,
+    RolePermission,
+    UserPreferences,
+    Password,
+    LoginAttempt
+)
 
 # Report models
 from app.models.reports import (
@@ -13,8 +23,6 @@ from app.models.reports import (
     ReportContent,
     ReportInsight,
     ReportQuery,
-    ReportVersion,
-    ReportComment,
     ReportTemplate,
     ReportSchedule,
     ReportExport,
@@ -22,14 +30,17 @@ from app.models.reports import (
     ReportStatus,
     ReportTypeCategory,
     AnalysisType,
-    MetadataType
+    MetadataType,
+    ReportExportStatus
 )
 
 # Analytics models
 from app.models.analytics import (
     SystemMetrics,
     ErrorLog,
-    VoiceCommand
+    VoiceCommand,
+    VoiceCommandStatus,
+    VoiceCommandType
 )
 
 # Notification models
@@ -45,12 +56,16 @@ from app.models.notifications import (
 # Audit models
 from app.models.audit import (
     AuditLog,
-    AuditAction
+    AuditAction,
+    ChangeHistory,
+    UserActivity
 )
 
 # File models
 from app.models.files import (
     FileStorage,
+    FileVersion,
+    FileAccessLog,
     FileType,
     FileStatus,
     StorageType
@@ -70,19 +85,39 @@ from app.models.tags import (
 )
 
 # Processing models
-from app.models.processing import *
+from app.models.processing import (
+    Document,
+    DocumentProcessing,
+    DocumentProcessingQueue,
+    DocumentProcessingResult,
+    ProcessingType,
+    OfflineContent,
+    SyncQueue,
+    ContentType,
+    SyncAction,
+    ProcessingStatus,
+    ProcessingPriority,
+    SyncStatus
+)
 
 # Integration models
 from app.models.integration import (
+    BIConnection,
+    BIDashboard,
     BIIntegration,
+    BISyncJob,
     IntegrationType,
-    IntegrationStatus
+    IntegrationStatus,
+    SyncFrequency,
+    SyncStatus
 )
 
 # Media models
 from app.models.media import (
     VoiceProfile,
-    AudioCache
+    AudioCache,
+    MediaType,
+    MediaStatus
 )
 
 __all__ = [
@@ -94,31 +129,31 @@ __all__ = [
     "UserPermission",
     "RolePermission",
     "UserPreferences",
-    "UserActivity",
-    "ActivityType",
     "Password",
+    "LoginAttempt",
     
     # Report models
     "Report",
     "ReportShare",
-    "ReportTemplate",
-    "ReportSchedule",
-    "ReportExport",
     "ReportContent",
     "ReportInsight",
     "ReportQuery",
-    "ReportVersion",
-    "ReportComment",
+    "ReportTemplate",
+    "ReportSchedule",
+    "ReportExport",
     "ReportType",
     "ReportStatus",
     "ReportTypeCategory",
     "AnalysisType",
     "MetadataType",
+    "ReportExportStatus",
     
     # Analytics models
     "SystemMetrics",
     "ErrorLog",
     "VoiceCommand",
+    "VoiceCommandStatus",
+    "VoiceCommandType",
     
     # Notification models
     "Notification",
@@ -131,9 +166,13 @@ __all__ = [
     # Audit models
     "AuditLog",
     "AuditAction",
+    "ChangeHistory",
+    "UserActivity", 
     
     # File models
     "FileStorage",
+    "FileVersion",
+    "FileAccessLog",
     "FileType",
     "FileStatus",
     "StorageType",
@@ -148,6 +187,7 @@ __all__ = [
     "EntityTag",
     
     # Processing models
+    "Document",
     "DocumentProcessing",
     "DocumentProcessingQueue",
     "DocumentProcessingResult",
@@ -157,13 +197,22 @@ __all__ = [
     "ContentType",
     "SyncAction",
     "ProcessingStatus",
+    "ProcessingPriority",
+    "SyncStatus",
     
     # Integration models
+    "BIConnection",
+    "BIDashboard",
     "BIIntegration",
+    "BISyncJob",
     "IntegrationType",
     "IntegrationStatus",
+    "SyncFrequency",
+    "SyncStatus",
     
     # Media models
     "VoiceProfile",
-    "AudioCache"
+    "AudioCache",
+    "MediaType",
+    "MediaStatus"
 ] 

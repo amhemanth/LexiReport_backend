@@ -4,6 +4,7 @@ from sqlalchemy import String, ForeignKey, JSON, Boolean, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Index
 
 from app.db.base_class import Base
 
@@ -32,7 +33,17 @@ class UserPreferences(Base):
     quiet_hours_end: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="preferences")
+    user: Mapped["User"] = relationship(
+        "User", 
+        back_populates="preferences",
+        passive_deletes=True
+    )
+
+    # Add indexes for common queries
+    __table_args__ = (
+        Index('idx_user_preferences_user', 'user_id'),
+        Index('idx_user_preferences_default', 'is_default'),
+    )
 
     def __repr__(self) -> str:
         return f"<UserPreferences {self.user_id}>" 

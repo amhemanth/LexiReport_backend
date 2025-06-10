@@ -33,6 +33,7 @@ class UserRole(Base):
     creator: Mapped[Optional["User"]] = relationship(
         "User",
         foreign_keys=[created_by],
+        back_populates="created_user_roles",
         passive_deletes=True
     )
 

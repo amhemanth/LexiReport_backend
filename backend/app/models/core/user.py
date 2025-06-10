@@ -5,18 +5,12 @@ import uuid
 
 from sqlalchemy import String, Boolean, Enum as SQLEnum, Index, ForeignKey, Text, JSON, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from enum import Enum as PyEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from app.db.base_class import Base
-
-
-class UserRole(str, PyEnum):
-    """User role enum"""
-    ADMIN = "admin"
-    MANAGER = "manager"
-    USER = "user"
-    GUEST = "guest"
+from app.models.audit.audit_log import AuditLog
+from app.models.comments.comment import Comment
+from app.models.media.voice import VoiceProfile
 
 
 class User(Base):
@@ -78,41 +72,23 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    created_reports: Mapped[List["Report"]] = relationship(
-        "Report",
-        back_populates="creator",
-        foreign_keys="Report.created_by",
-        cascade="all, delete-orphan",
-        passive_deletes=True
-    )
-    updated_reports: Mapped[List["Report"]] = relationship(
-        "Report",
-        back_populates="updater",
-        foreign_keys="Report.updated_by",
-        passive_deletes=True
-    )
-    shared_reports: Mapped[List["ReportShare"]] = relationship(
-        "ReportShare",
-        back_populates="sharer",
-        foreign_keys="ReportShare.shared_by",
-        passive_deletes=True
-    )
-    received_reports: Mapped[List["ReportShare"]] = relationship(
-        "ReportShare",
-        back_populates="sharee",
-        foreign_keys="ReportShare.shared_with",
-        passive_deletes=True
-    )
     activities: Mapped[List["UserActivity"]] = relationship(
         "UserActivity",
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    voice_profile: Mapped[Optional["VoiceProfile"]] = relationship(
-        "VoiceProfile",
+    login_attempts: Mapped[List["LoginAttempt"]] = relationship(
+        "LoginAttempt",
         back_populates="user",
-        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    
+    # Voice command relationship
+    voice_commands: Mapped[List["VoiceCommand"]] = relationship(
+        "VoiceCommand",
+        back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
@@ -124,21 +100,79 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    notification_preferences: Mapped[List["NotificationPreference"]] = relationship(
+    notification_preferences: Mapped[Optional["NotificationPreference"]] = relationship(
         "NotificationPreference",
         back_populates="user",
+        uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True
     )
     
-    # Audit relationships
-    audit_logs: Mapped[List["AuditLog"]] = relationship(
-        "AuditLog",
+    # Report relationships
+    created_reports: Mapped[List["Report"]] = relationship(
+        "Report",
+        foreign_keys="Report.created_by",
+        back_populates="creator",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    updated_reports: Mapped[List["Report"]] = relationship(
+        "Report",
+        foreign_keys="Report.updated_by",
+        back_populates="updater",
+        passive_deletes=True
+    )
+    shared_reports: Mapped[List["ReportShare"]] = relationship(
+        "ReportShare",
+        foreign_keys="ReportShare.shared_by",
+        back_populates="sharer",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    received_reports: Mapped[List["ReportShare"]] = relationship(
+        "ReportShare",
+        foreign_keys="ReportShare.shared_with",
+        back_populates="sharee",
+        passive_deletes=True
+    )
+    report_schedules: Mapped[List["ReportSchedule"]] = relationship(
+        "ReportSchedule",
+        foreign_keys="ReportSchedule.created_by",
+        back_populates="creator",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    updated_schedules: Mapped[List["ReportSchedule"]] = relationship(
+        "ReportSchedule",
+        foreign_keys="ReportSchedule.updated_by",
+        back_populates="updater",
+        passive_deletes=True
+    )
+    created_exports: Mapped[List["ReportExport"]] = relationship(
+        "ReportExport",
+        foreign_keys="ReportExport.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+    report_insights: Mapped[List["ReportInsight"]] = relationship(
+        "ReportInsight",
+        foreign_keys="ReportInsight.user_id",
         back_populates="user",
-        cascade="all, delete-orphan",
         passive_deletes=True
     )
-    
+    report_queries: Mapped[List["ReportQuery"]] = relationship(
+        "ReportQuery",
+        foreign_keys="ReportQuery.user_id",
+        back_populates="user",
+        passive_deletes=True
+    )
+    bi_integrations: Mapped[List["BIIntegration"]] = relationship(
+        "BIIntegration",
+        foreign_keys="BIIntegration.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+
     # File relationships
     files: Mapped[List["FileStorage"]] = relationship(
         "FileStorage",
@@ -147,67 +181,94 @@ class User(Base):
         passive_deletes=True
     )
     
+    # Document relationships
+    created_documents: Mapped[List["Document"]] = relationship(
+        "Document",
+        foreign_keys="Document.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+    updated_documents: Mapped[List["Document"]] = relationship(
+        "Document",
+        foreign_keys="Document.updated_by",
+        back_populates="updater",
+        passive_deletes=True
+    )
+    
+    # Report content relationships
+    created_report_contents: Mapped[List["ReportContent"]] = relationship(
+        "ReportContent",
+        foreign_keys="ReportContent.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+    
+    # Report template relationships
+    report_templates: Mapped[List["ReportTemplate"]] = relationship(
+        "ReportTemplate",
+        foreign_keys="ReportTemplate.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+    updated_templates: Mapped[List["ReportTemplate"]] = relationship(
+        "ReportTemplate",
+        foreign_keys="ReportTemplate.updated_by",
+        back_populates="updater",
+        passive_deletes=True
+    )
+    
+    # User role relationships
+    created_user_roles: Mapped[List["UserRole"]] = relationship(
+        "UserRole",
+        foreign_keys="UserRole.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+    
+    # User permission relationships
+    created_user_permissions: Mapped[List["UserPermission"]] = relationship(
+        "UserPermission",
+        foreign_keys="UserPermission.created_by",
+        back_populates="creator",
+        passive_deletes=True
+    )
+
+    # Audit log relationships
+    audit_logs: Mapped[List["AuditLog"]] = relationship(
+        "AuditLog",
+        foreign_keys="AuditLog.user_id",
+        back_populates="user",
+        passive_deletes=True
+    )
+
     # Comment relationships
     comments: Mapped[List["Comment"]] = relationship(
         "Comment",
+        foreign_keys="Comment.user_id",
         back_populates="user",
-        cascade="all, delete-orphan",
         passive_deletes=True
     )
     mentioned_in_comments: Mapped[List["Comment"]] = relationship(
         "Comment",
         secondary="comment_mentions",
         back_populates="mentions",
-        passive_deletes=True,
-        foreign_keys="[CommentMention.comment_id, CommentMention.user_id]"
+        passive_deletes=True
+    )
+
+    # Voice profile relationship
+    voice_profile: Mapped[Optional["VoiceProfile"]] = relationship(
+        "VoiceProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     
     # Tag relationships
     entity_tags: Mapped[List["EntityTag"]] = relationship(
         "EntityTag",
+        foreign_keys="EntityTag.user_id",
         back_populates="user",
-        cascade="all, delete-orphan",
-        passive_deletes=True
-    )
-    
-    # New relationships
-    report_templates: Mapped[List["ReportTemplate"]] = relationship(
-        "ReportTemplate",
-        back_populates="creator",
-        foreign_keys="ReportTemplate.created_by",
-        cascade="all, delete-orphan",
-        passive_deletes=True
-    )
-    updated_templates: Mapped[List["ReportTemplate"]] = relationship(
-        "ReportTemplate",
-        back_populates="updater",
-        foreign_keys="ReportTemplate.updated_by",
-        passive_deletes=True
-    )
-    report_schedules: Mapped[List["ReportSchedule"]] = relationship(
-        "ReportSchedule",
-        back_populates="creator",
-        foreign_keys="ReportSchedule.created_by",
-        cascade="all, delete-orphan",
-        passive_deletes=True
-    )
-    updated_schedules: Mapped[List["ReportSchedule"]] = relationship(
-        "ReportSchedule",
-        back_populates="updater",
-        foreign_keys="ReportSchedule.updated_by",
-        passive_deletes=True
-    )
-    created_exports: Mapped[List["ReportExport"]] = relationship(
-        "ReportExport",
-        back_populates="creator",
-        foreign_keys="ReportExport.created_by",
-        cascade="all, delete-orphan",
-        passive_deletes=True
-    )
-    voice_commands: Mapped[List["VoiceCommand"]] = relationship(
-        "VoiceCommand",
-        back_populates="user",
-        cascade="all, delete-orphan",
         passive_deletes=True
     )
     

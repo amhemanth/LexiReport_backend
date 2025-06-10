@@ -3,9 +3,16 @@ from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, validator, Field, Config
 from pydantic_settings import BaseSettings
 import os
 import secrets
+from pathlib import Path
 
 class Settings(BaseSettings):
     """Application settings."""
+    
+    # Environment Settings
+    ENVIRONMENT: str = Field(
+        default="development",
+        description="Application environment (development, staging, production)"
+    )
     
     # API Settings
     API_V1_STR: str = "/api/v1"
@@ -14,6 +21,10 @@ class Settings(BaseSettings):
     DESCRIPTION: str = Field(default="LexiReport Backend API", description="API description")
     SERVER_NAME: str = Field(default="localhost", description="Server name")
     SERVER_HOST: str = Field(default="0.0.0.0", description="Server host")
+    ALLOWED_HOSTS: List[str] = Field(
+        default=["localhost", "127.0.0.1"],
+        description="List of allowed host names"
+    )
 
     # CORS Configuration
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
@@ -31,6 +42,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_ALGORITHM: str = "HS256"
+    SESSION_EXPIRE_MINUTES: int = Field(
+        default=60 * 24,  # 24 hours
+        description="Session expiration time in minutes"
+    )
 
     # Database Settings
     POSTGRES_SERVER: str = Field(
@@ -50,7 +65,7 @@ class Settings(BaseSettings):
         description="PostgreSQL password"
     )
     POSTGRES_DB: str = Field(
-        default="ai_report_analyzer",
+        default="lexireport",
         description="PostgreSQL database name"
     )
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
@@ -103,6 +118,25 @@ class Settings(BaseSettings):
         default=0,
         description="Redis database number"
     )
+    REDIS_SSL: bool = False
+    REDIS_URL: Optional[str] = None
+    REDIS_MAX_CONNECTIONS: int = Field(
+        default=10,
+        description="Maximum number of Redis connections"
+    )
+    REDIS_SOCKET_TIMEOUT: int = Field(
+        default=5,
+        description="Redis socket timeout in seconds"
+    )
+    REDIS_RETRY_ON_TIMEOUT: bool = True
+
+    @validator("REDIS_URL", pre=True)
+    def assemble_redis_url(cls, v: Optional[str], values: Dict[str, Any]) -> str:
+        if isinstance(v, str):
+            return v
+        password = values.get("REDIS_PASSWORD")
+        auth = f":{password}@" if password else ""
+        return f"redis://{auth}{values.get('REDIS_HOST')}:{values.get('REDIS_PORT')}/{values.get('REDIS_DB')}"
 
     # Email Settings
     SMTP_TLS: bool = Field(
@@ -210,6 +244,28 @@ class Settings(BaseSettings):
         description="Cache time-to-live in seconds"
     )
 
+    # Rate Limiting Settings
+    MAX_LOGIN_ATTEMPTS: int = Field(
+        default=5,
+        description="Maximum number of login attempts"
+    )
+    LOGIN_ATTEMPT_WINDOW: int = Field(
+        default=15,  # minutes
+        description="Login attempt window in minutes"
+    )
+    RATE_LIMIT_PER_MINUTE: int = Field(
+        default=60,
+        description="Rate limit per minute"
+    )
+    RATE_LIMIT_PER_HOUR: int = Field(
+        default=1000,
+        description="Rate limit per hour"
+    )
+    RATE_LIMIT_PER_DAY: int = Field(
+        default=10000,
+        description="Rate limit per day"
+    )
+
     @validator("MODEL_PATH", "CACHE_DIR", "UPLOAD_DIR", pre=True)
     def validate_paths(cls, v: str) -> str:
         """Validate and create paths if they don't exist."""
@@ -228,4 +284,6 @@ class Settings(BaseSettings):
 
 def get_settings() -> Settings:
     """Get application settings."""
-    return Settings() 
+    return Settings()
+
+settings = get_settings() 

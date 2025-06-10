@@ -1,454 +1,775 @@
-"""Database seeding script for initial data."""
+"""Database seeding script."""
 import logging
-import uuid
-from datetime import datetime, timezone, timedelta, time
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy import create_engine, text
-from app.config.settings import get_settings
-from app.db.base import *  # Import all models from base.py
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+from app.models.core import (
+    User, Role, Permission, UserRole, RolePermission,
+    UserPreferences, Password, LoginAttempt
+)
+from app.models.audit import (
+    UserActivity, AuditLog, ChangeHistory
+)
+from app.models.files import (
+    FileStorage, FileVersion, FileAccessLog,
+    FileType, FileStatus, StorageType
+)
+from app.models.comments import (
+    Comment, CommentThread, CommentMention
+)
+from app.models.tags import (
+    Tag, EntityTag
+)
+from app.models.processing import (
+    Document, DocumentProcessing, DocumentProcessingResult,
+    ProcessingType, ProcessingStatus
+)
+from app.models.integration import (
+    BIConnection, BIDashboard, BIIntegration,
+    IntegrationType, IntegrationStatus
+)
 from app.core.security import get_password_hash
-from typing import Dict
-from contextlib import contextmanager
-from app.models.reports.enums import ReportType, ReportStatus, ReportTypeCategory
-from app.models.notifications.enums import NotificationType, NotificationStatus
-from app.models.files.enums import FileType, FileStatus
-from app.models.processing.enums import ProcessingType, ProcessingStatus
-from app.models.integration.enums import BIPlatformType, SyncStatus
+import uuid
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@contextmanager
-def get_db_session():
-    """Create and return a database session with proper transaction handling."""
-    settings = get_settings()
-    engine = create_engine(
-        str(settings.SQLALCHEMY_DATABASE_URI),
-        pool_pre_ping=True,
-        pool_recycle=3600,
-        echo=True
-    )
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    session = SessionLocal()
-    try:
-        yield session
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-def get_or_create_permission(db, name, description):
-    permission = db.query(Permission).filter_by(name=name).first()
-    if not permission:
-        now = datetime.now(timezone.utc)
-        permission = Permission(
-            name=name,
-            description=description,
-            is_active=True,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(permission)
-        db.flush()
-    return permission
-
-def get_or_create_role(db, name, description):
-    role = db.query(Role).filter_by(name=name).first()
-    if not role:
-        now = datetime.now(timezone.utc)
-        role = Role(
-            name=name,
-            description=description,
-            is_active=True,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(role)
-        db.flush()
-    return role
-
-def get_or_create_role_permission(db, role_id, permission_id):
-    rp = db.query(RolePermission).filter_by(role_id=role_id, permission_id=permission_id).first()
-    if not rp:
-        rp = RolePermission(
-            role_id=role_id,
-            permission_id=permission_id,
-            created_at=datetime.now(timezone.utc)
-        )
-        db.add(rp)
-        db.flush()
-    return rp
-
-def get_or_create_user(db, email, username, full_name, is_active, is_superuser, meta_data=None):
-    user = db.query(User).filter_by(email=email).first()
-    if not user:
-        now = datetime.now(timezone.utc)
-        user = User(
-            email=email,
-            username=username,
-            full_name=full_name,
-            is_active=is_active,
-            is_superuser=is_superuser,
-            meta_data=meta_data or {},
-            created_at=now,
-            updated_at=now
-        )
-        db.add(user)
-        db.flush()
-    return user
-
-def get_or_create_user_role(db, user_id, role_id, is_primary=True):
-    ur = db.query(UserRole).filter_by(user_id=user_id, role_id=role_id).first()
-    if not ur:
-        now = datetime.now(timezone.utc)
-        ur = UserRole(
-            user_id=user_id,
-            role_id=role_id,
-            is_primary=is_primary,
-            created_by=user_id,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(ur)
-        db.flush()
-    return ur
-
-def get_or_create_user_preferences(db, user_id):
-    pref = db.query(UserPreferences).filter_by(user_id=user_id).first()
-    if not pref:
-        pref = UserPreferences(
-            user_id=user_id,
-            theme="light",
-            language="en",
-            timezone="UTC",
-            notification_settings={
-                "email": True,
-                "push": True,
-                "in_app": True
-            },
-            display_settings={
-                "font_size": "medium",
-                "color_scheme": "default"
-            },
-            accessibility_settings={
-                "high_contrast": False,
-                "screen_reader": False
-            },
-            is_default=True,
-            email_enabled=True,
-            push_enabled=True,
-            in_app_enabled=True,
-            notification_frequency="immediate",
-            quiet_hours_start=time(22, 0),  # 10:00 PM
-            quiet_hours_end=time(7, 0)      # 7:00 AM
-        )
-        db.add(pref)
-        db.flush()
-    return pref
-
-def get_or_create_password(db, user_id, password):
-    pw = db.query(Password).filter_by(user_id=user_id).first()
-    if not pw:
-        now = datetime.now(timezone.utc)
-        pw = Password(
-            user_id=user_id,
-            hashed_password=get_password_hash(password),
-            is_current=True,
-            password_updated_at=now,
-            created_at=now
-        )
-        db.add(pw)
-        db.flush()
-    return pw
-
-def get_or_create_notification(db, user_id, title, message, type, status, is_important=False):
-    notification = db.query(Notification).filter_by(
-        user_id=user_id,
-        title=title,
-        type=type
-    ).first()
-    
-    if not notification:
-        now = datetime.now(timezone.utc)
-        notification = Notification(
-            user_id=user_id,
-            template_id=None,  # No template for system notifications
-            title=title,
-            message=message,
-            type=type,
-            status=status,
-            data={},  # Empty data for system notifications
-            is_important=is_important,
-            read_at=None,
-            expires_at=now + timedelta(days=30),  # Expire after 30 days
-            entity_type=None,
-            entity_id=None,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(notification)
-        db.flush()
-    return notification
-
-def get_or_create_tag(db, name, description=None, color=None, is_system=False):
-    tag = db.query(Tag).filter_by(name=name).first()
-    if not tag:
-        now = datetime.now(timezone.utc)
-        tag = Tag(
-            name=name,
-            description=description,
-            color=color,
-            is_system=is_system,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(tag)
-        db.flush()
-    return tag
-
-def get_or_create_report(db, title, description, type, category, created_by, is_public=False):
-    report = db.query(Report).filter_by(title=title).first()
-    if not report:
-        now = datetime.now(timezone.utc)
-        report = Report(
-            title=title,
-            description=description,
-            type=type,
-            category=category,
-            is_public=is_public,
-            created_by=created_by,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(report)
-        db.flush()
-    return report
-
-def get_or_create_report_content(db, report_id, content_type, content_data):
-    content = db.query(ReportContent).filter_by(
-        report_id=report_id,
-        content_type=content_type
-    ).first()
-    
-    if not content:
-        now = datetime.now(timezone.utc)
-        content = ReportContent(
-            report_id=report_id,
-            content_type=content_type,
-            content_data=content_data,
-            version=1,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(content)
-        db.flush()
-    return content
-
-def get_or_create_report_schedule(db, report_id, name, schedule, recipients, format, created_by):
-    schedule_obj = db.query(ReportSchedule).filter_by(
-        report_id=report_id,
-        name=name
-    ).first()
-    
-    if not schedule_obj:
-        now = datetime.now(timezone.utc)
-        schedule_obj = ReportSchedule(
-            report_id=report_id,
-            name=name,
-            description=f"Schedule for {name}",
-            schedule=schedule,
-            recipients=recipients,
-            format=format,
-            is_active=True,
-            last_run=None,
-            next_run=now + timedelta(days=30),  # Set next run to 30 days from now
-            created_by=created_by,
-            updated_by=created_by,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(schedule_obj)
-        db.flush()
-    return schedule_obj
-
-def get_or_create_bi_connection(db, name, platform_type, connection_details):
-    connection = db.query(BIConnection).filter_by(name=name).first()
-    if not connection:
-        now = datetime.now(timezone.utc)
-        connection = BIConnection(
-            name=name,
-            platform_type=platform_type,
-            connection_details=connection_details,
-            is_active=True,
-            created_at=now,
-            updated_at=now
-        )
-        db.add(connection)
-        db.flush()
-    return connection
-
-def create_sample_data(db: Session, admin: User) -> None:
-    """Create sample data for testing."""
-    try:
-        logger.info("Starting to create sample data...")
-        
-        # Create sample report
-        report = get_or_create_report(
-            db=db,
-            title="Monthly Sales Report",
-            description="Monthly sales analysis report",
-            type=ReportType.STANDARD,
-            category=ReportTypeCategory.ANALYTICAL,
-            created_by=admin.id,
-            is_public=True
-        )
-        
-        # Create report content
-        report_content = get_or_create_report_content(
-            db=db,
-            report_id=report.id,
-            content_type="analytics",
-            content_data={
-                "charts": [
-                    {
-                        "type": "bar",
-                        "title": "Monthly Sales",
-                        "data": {
-                            "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                            "datasets": [
-                                {
-                                    "label": "Sales",
-                                    "data": [1000, 1200, 900, 1500, 1800, 2000]
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        )
-        
-        # Create report schedule
-        report_schedule = get_or_create_report_schedule(
-            db=db,
-            report_id=report.id,
-            name="Monthly Schedule",
-            schedule={"cron": "0 0 1 * *"},  # Run at midnight on the 1st of each month
-            recipients=["admin@example.com"],
-            format="PDF",
-            created_by=admin.id
-        )
-        
-        # Create sample tags
-        tags = [
-            get_or_create_tag(db, "Important", "High priority items", "#FF0000", True),
-            get_or_create_tag(db, "Review", "Needs review", "#FFA500"),
-            get_or_create_tag(db, "Completed", "Completed items", "#00FF00")
-        ]
-        
-        # Create sample BI connection
-        bi_connection = get_or_create_bi_connection(
-            db=db,
-            name="Production BI",
-            platform_type=BIPlatformType.POWER_BI,
-            connection_details={
-                "workspace_id": "sample-workspace",
-                "dataset_id": "sample-dataset"
-            }
-        )
-        
-        # Create sample notifications
-        notifications = [
-            get_or_create_notification(
-                db=db,
-                user_id=admin.id,
-                title="Welcome to the System",
-                message="Welcome to the reporting system!",
-                type=NotificationType.SYSTEM,
-                status=NotificationStatus.UNREAD,
-                is_important=True
-            ),
-            get_or_create_notification(
-                db=db,
-                user_id=admin.id,
-                title="Report Generated",
-                message="Your monthly report has been generated.",
-                type=NotificationType.REPORT,
-                status=NotificationStatus.UNREAD
-            )
-        ]
-        
-        logger.info("Sample data created successfully!")
-        
-    except Exception as e:
-        logger.error(f"Error creating sample data: {str(e)}")
-        raise
-
-def seed_database(db: Session) -> None:
+def seed_database():
     """Seed the database with initial data."""
+    db = SessionLocal()
     try:
         logger.info("Starting database seeding...")
         
-        # Create permissions
-        permissions = {
-            "admin": get_or_create_permission(db, "admin", "Administrator access"),
-            "user": get_or_create_permission(db, "user", "Regular user access"),
-            "report_create": get_or_create_permission(db, "report:create", "Create reports"),
-            "report_read": get_or_create_permission(db, "report:read", "Read reports"),
-            "report_update": get_or_create_permission(db, "report:update", "Update reports"),
-            "report_delete": get_or_create_permission(db, "report:delete", "Delete reports")
-        }
-        
         # Create roles
-        roles = {
-            "admin": get_or_create_role(db, "admin", "Administrator role"),
-            "user": get_or_create_role(db, "user", "Regular user role")
-        }
+        roles = create_roles(db)
+        logger.info(f"Created {len(roles)} roles")
+        
+        # Create permissions
+        permissions = create_permissions(db)
+        logger.info(f"Created {len(permissions)} permissions")
         
         # Assign permissions to roles
-        role_permissions = {
-            "admin": [p.id for p in permissions.values()],
-            "user": [permissions["report_read"].id]
-        }
+        assign_permissions_to_roles(db, roles, permissions)
+        logger.info("Assigned permissions to roles")
         
-        for role_name, permission_ids in role_permissions.items():
-            for permission_id in permission_ids:
-                get_or_create_role_permission(db, roles[role_name].id, permission_id)
+        # Create users
+        users = create_users(db, roles)
+        logger.info("Created users")
         
-        # Create admin user
-        admin = get_or_create_user(
-            db=db,
-            email="admin@example.com",
-            username="admin",
-            full_name="System Administrator",
-            is_active=True,
-            is_superuser=True
-        )
+        # Create user activities
+        create_user_activities(db, users)
+        logger.info("Created user activities")
         
-        # Set admin password
-        get_or_create_password(db, admin.id, "admin123")
+        # Create tags
+        tags = create_tags(db)
+        logger.info("Created tags")
         
-        # Assign admin role to admin user
-        get_or_create_user_role(db, admin.id, roles["admin"].id)
+        # Create sample files
+        files = create_sample_files(db, users)
+        logger.info("Created sample files")
         
-        # Create user preferences for admin
-        get_or_create_user_preferences(db, admin.id)
+        # Create sample documents
+        documents = create_sample_documents(db, users)
+        logger.info("Created sample documents")
         
-        # Create sample data
-        create_sample_data(db, admin)
+        # Create sample comments
+        create_sample_comments(db, users, documents)
+        logger.info("Created sample comments")
         
-        logger.info("Database seeding completed successfully!")
+        # Create sample BI integrations
+        create_sample_bi_integrations(db, users)
+        logger.info("Created sample BI integrations")
+        
+        # Commit all changes
+        db.commit()
+        logger.info("Successfully committed all changes to database")
         
     except Exception as e:
+        db.rollback()
         logger.error(f"Error seeding database: {str(e)}")
         raise
+    finally:
+        db.close()
 
-def seed():
-    """Main seeding function."""
-    with get_db_session() as db:
-        seed_database(db)
+def create_roles(db: Session) -> dict:
+    """Create system roles."""
+    roles = {
+        "admin": Role(
+            id=uuid.uuid4(),
+            name="admin",
+            description="System administrator with full access",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "user": Role(
+            id=uuid.uuid4(),
+            name="user",
+            description="Regular user with standard access",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "manager": Role(
+            id=uuid.uuid4(),
+            name="manager",
+            description="Manager with elevated access",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    }
+    
+    for role in roles.values():
+        db.add(role)
+    db.flush()
+    return roles
+
+def create_permissions(db: Session) -> dict:
+    """Create system permissions."""
+    permissions = {
+        # User management permissions
+        "user_create": Permission(
+            id=uuid.uuid4(),
+            name="user:create",
+            description="Create new users",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "user_read": Permission(
+            id=uuid.uuid4(),
+            name="user:read",
+            description="View user information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "user_update": Permission(
+            id=uuid.uuid4(),
+            name="user:update",
+            description="Update user information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "user_delete": Permission(
+            id=uuid.uuid4(),
+            name="user:delete",
+            description="Delete users",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        # Role management permissions
+        "role_create": Permission(
+            id=uuid.uuid4(),
+            name="role:create",
+            description="Create new roles",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "role_read": Permission(
+            id=uuid.uuid4(),
+            name="role:read",
+            description="View role information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "role_update": Permission(
+            id=uuid.uuid4(),
+            name="role:update",
+            description="Update role information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "role_delete": Permission(
+            id=uuid.uuid4(),
+            name="role:delete",
+            description="Delete roles",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        # Permission management permissions
+        "permission_create": Permission(
+            id=uuid.uuid4(),
+            name="permission:create",
+            description="Create new permissions",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "permission_read": Permission(
+            id=uuid.uuid4(),
+            name="permission:read",
+            description="View permission information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "permission_update": Permission(
+            id=uuid.uuid4(),
+            name="permission:update",
+            description="Update permission information",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "permission_delete": Permission(
+            id=uuid.uuid4(),
+            name="permission:delete",
+            description="Delete permissions",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        # System management permissions
+        "system_settings_read": Permission(
+            id=uuid.uuid4(),
+            name="system:settings:read",
+            description="View system settings",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "system_settings_update": Permission(
+            id=uuid.uuid4(),
+            name="system:settings:update",
+            description="Update system settings",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        # Audit and logging permissions
+        "audit_logs_read": Permission(
+            id=uuid.uuid4(),
+            name="audit:logs:read",
+            description="View audit logs",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "audit_logs_export": Permission(
+            id=uuid.uuid4(),
+            name="audit:logs:export",
+            description="Export audit logs",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        # Report management permissions
+        "report_create": Permission(
+            id=uuid.uuid4(),
+            name="report:create",
+            description="Create reports",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "report_read": Permission(
+            id=uuid.uuid4(),
+            name="report:read",
+            description="View reports",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "report_update": Permission(
+            id=uuid.uuid4(),
+            name="report:update",
+            description="Update reports",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ),
+        "report_delete": Permission(
+            id=uuid.uuid4(),
+            name="report:delete",
+            description="Delete reports",
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    }
+    
+    for permission in permissions.values():
+        db.add(permission)
+    db.flush()
+    return permissions
+
+def assign_permissions_to_roles(db: Session, roles: dict, permissions: dict):
+    """Assign permissions to roles."""
+    now = datetime.utcnow()
+    
+    # Admin role gets all permissions
+    for permission in permissions.values():
+        role_permission = RolePermission(
+            id=uuid.uuid4(),
+            role_id=roles["admin"].id,
+            permission_id=permission.id,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(role_permission)
+    
+    # Manager role permissions
+    manager_permissions = [
+        "user_read",
+        "user_create",
+        "user_update",
+        "role_read",
+        "permission_read",
+        "system_settings_read",
+        "audit_logs_read",
+        "report_create",
+        "report_read",
+        "report_update",
+        "report_delete"
+    ]
+    
+    for perm_name in manager_permissions:
+        role_permission = RolePermission(
+            id=uuid.uuid4(),
+            role_id=roles["manager"].id,
+            permission_id=permissions[perm_name].id,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(role_permission)
+    
+    # User role permissions - more granular access
+    user_permissions = [
+        "user_read",
+        "role_read",
+        "permission_read",
+        "system_settings_read",
+        "audit_logs_read",
+        "report_read"
+    ]
+    
+    for perm_name in user_permissions:
+        role_permission = RolePermission(
+            id=uuid.uuid4(),
+            role_id=roles["user"].id,
+            permission_id=permissions[perm_name].id,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(role_permission)
+    db.flush()
+
+def create_users(db: Session, roles: dict) -> dict:
+    """Create initial users."""
+    now = datetime.utcnow()
+    users = {}
+    
+    # Create admin user
+    admin = User(
+        id=uuid.uuid4(),
+        email="admin@example.com",
+        username="admin",
+        full_name="System Administrator",
+        is_active=True,
+        is_superuser=True,
+        meta_data={"is_seed": True},
+        last_login=now,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(admin)
+    db.flush()
+    users["admin"] = admin
+    
+    # Add admin role
+    admin_role = UserRole(
+        id=uuid.uuid4(),
+        user_id=admin.id,
+        role_id=roles["admin"].id,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(admin_role)
+    
+    # Create admin preferences
+    admin_preferences = UserPreferences(
+        id=uuid.uuid4(),
+        user_id=admin.id,
+        theme="dark",
+        language="en",
+        notifications_enabled=True,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(admin_preferences)
+    
+    # Create manager user
+    manager = User(
+        id=uuid.uuid4(),
+        email="manager@example.com",
+        username="manager",
+        full_name="System Manager",
+        is_active=True,
+        is_superuser=False,
+        meta_data={"is_seed": True},
+        last_login=now,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(manager)
+    db.flush()
+    users["manager"] = manager
+    
+    # Add manager role
+    manager_role = UserRole(
+        id=uuid.uuid4(),
+        user_id=manager.id,
+        role_id=roles["manager"].id,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(manager_role)
+    
+    # Create manager preferences
+    manager_preferences = UserPreferences(
+        id=uuid.uuid4(),
+        user_id=manager.id,
+        theme="light",
+        language="en",
+        notifications_enabled=True,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(manager_preferences)
+    
+    # Create regular user
+    user = User(
+        id=uuid.uuid4(),
+        email="user@example.com",
+        username="user",
+        full_name="Regular User",
+        is_active=True,
+        is_superuser=False,
+        meta_data={"is_seed": True},
+        last_login=now,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(user)
+    db.flush()
+    users["user"] = user
+    
+    # Add user role
+    user_role = UserRole(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        role_id=roles["user"].id,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(user_role)
+    
+    # Create user preferences
+    user_preferences = UserPreferences(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        theme="light",
+        language="en",
+        notifications_enabled=True,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(user_preferences)
+    
+    # Create passwords
+    admin_password = Password(
+        id=uuid.uuid4(),
+        user_id=admin.id,
+        hashed_password=get_password_hash("admin123"),
+        created_at=now,
+        updated_at=now
+    )
+    db.add(admin_password)
+    
+    manager_password = Password(
+        id=uuid.uuid4(),
+        user_id=manager.id,
+        hashed_password=get_password_hash("manager123"),
+        created_at=now,
+        updated_at=now
+    )
+    db.add(manager_password)
+    
+    user_password = Password(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        hashed_password=get_password_hash("user123"),
+        created_at=now,
+        updated_at=now
+    )
+    db.add(user_password)
+    db.flush()
+    
+    return users
+
+def create_user_activities(db: Session, users: dict):
+    """Create initial user activities."""
+    now = datetime.utcnow()
+    
+    # Create activities for each user
+    for user_type, user in users.items():
+        # Account creation activity
+        creation_activity = UserActivity(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            activity_type="account_creation",
+            description=f"Initial {user_type} account creation",
+            entity_type="user",
+            entity_id=user.id,
+            created_at=now
+        )
+        db.add(creation_activity)
+        
+        # Login activity
+        login_activity = UserActivity(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            activity_type="login",
+            description=f"{user_type} user logged in",
+            entity_type="user",
+            entity_id=user.id,
+            created_at=now
+        )
+        db.add(login_activity)
+        
+        # Profile update activity
+        profile_activity = UserActivity(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            activity_type="profile_update",
+            description=f"{user_type} user updated profile",
+            entity_type="user",
+            entity_id=user.id,
+            created_at=now
+        )
+        db.add(profile_activity)
+    
+    db.flush()
+
+def create_tags(db: Session) -> dict:
+    """Create system tags."""
+    now = datetime.utcnow()
+    tags = {
+        "important": Tag(
+            id=uuid.uuid4(),
+            name="important",
+            description="Important items",
+            is_system=True,
+            created_at=now,
+            updated_at=now
+        ),
+        "review": Tag(
+            id=uuid.uuid4(),
+            name="review",
+            description="Items needing review",
+            is_system=True,
+            created_at=now,
+            updated_at=now
+        ),
+        "archived": Tag(
+            id=uuid.uuid4(),
+            name="archived",
+            description="Archived items",
+            is_system=True,
+            created_at=now,
+            updated_at=now
+        )
+    }
+    
+    for tag in tags.values():
+        db.add(tag)
+    db.flush()
+    return tags
+
+def create_sample_files(db: Session, users: dict) -> dict:
+    """Create sample files."""
+    now = datetime.utcnow()
+    files = {}
+    
+    # Create a sample file for each user
+    for user_type, user in users.items():
+        file = FileStorage(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            file_name=f"{user_type}_sample.pdf",
+            file_type=FileType.PDF,
+            file_size=1024 * 1024,  # 1MB
+            storage_type=StorageType.LOCAL,
+            status=FileStatus.COMPLETED,
+            meta_data={"is_seed": True},
+            created_at=now,
+            updated_at=now
+        )
+        db.add(file)
+        db.flush()
+        files[user_type] = file
+        
+        # Create a file version
+        version = FileVersion(
+            id=uuid.uuid4(),
+            file_id=file.id,
+            version_number=1,
+            file_path=f"/uploads/{file.id}/v1.pdf",
+            file_size=file.file_size,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(version)
+        
+        # Create an access log
+        access_log = FileAccessLog(
+            id=uuid.uuid4(),
+            file_id=file.id,
+            user_id=user.id,
+            action="create",
+            created_at=now
+        )
+        db.add(access_log)
+    
+    db.flush()
+    return files
+
+def create_sample_documents(db: Session, users: dict) -> dict:
+    """Create sample documents."""
+    now = datetime.utcnow()
+    documents = {}
+    
+    # Create a sample document for each user
+    for user_type, user in users.items():
+        document = Document(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            title=f"{user_type}'s Document",
+            content_type="text/plain",
+            content="This is a sample document content.",
+            status="active",
+            meta_data={"is_seed": True},
+            created_at=now,
+            updated_at=now
+        )
+        db.add(document)
+        db.flush()
+        documents[user_type] = document
+        
+        # Create document processing record
+        processing = DocumentProcessing(
+            id=uuid.uuid4(),
+            document_id=document.id,
+            processing_type=ProcessingType.TEXT_EXTRACTION,
+            status=ProcessingStatus.COMPLETED,
+            result_data={"extracted_text": "Sample extracted text"},
+            created_at=now,
+            updated_at=now
+        )
+        db.add(processing)
+    
+    db.flush()
+    return documents
+
+def create_sample_comments(db: Session, users: dict, documents: dict):
+    """Create sample comments."""
+    now = datetime.utcnow()
+    
+    # Create a comment thread for each document
+    for user_type, document in documents.items():
+        thread = CommentThread(
+            id=uuid.uuid4(),
+            entity_type="document",
+            entity_id=document.id,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(thread)
+        db.flush()
+        
+        # Add a comment from each user
+        for commenter_type, commenter in users.items():
+            comment = Comment(
+                id=uuid.uuid4(),
+                thread_id=thread.id,
+                user_id=commenter.id,
+                content=f"Comment from {commenter_type} on {user_type}'s document",
+                created_at=now,
+                updated_at=now
+            )
+            db.add(comment)
+            
+            # Add a mention if it's not the document owner
+            if commenter_type != user_type:
+                mention = CommentMention(
+                    id=uuid.uuid4(),
+                    comment_id=comment.id,
+                    user_id=users[user_type].id,
+                    created_at=now
+                )
+                db.add(mention)
+    
+    db.flush()
+
+def create_sample_bi_integrations(db: Session, users: dict):
+    """Create sample BI integrations."""
+    now = datetime.utcnow()
+    
+    # Create a BI integration for the admin user
+    admin = users["admin"]
+    integration = BIIntegration(
+        id=uuid.uuid4(),
+        user_id=admin.id,
+        name="Sample BI Integration",
+        integration_type=IntegrationType.POWER_BI,
+        status=IntegrationStatus.ACTIVE,
+        config={"api_key": "sample_key"},
+        created_at=now,
+        updated_at=now
+    )
+    db.add(integration)
+    db.flush()
+    
+    # Create a connection
+    connection = BIConnection(
+        id=uuid.uuid4(),
+        integration_id=integration.id,
+        name="Sample Connection",
+        connection_string="sample_connection_string",
+        is_active=True,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(connection)
+    
+    # Create a dashboard
+    dashboard = BIDashboard(
+        id=uuid.uuid4(),
+        connection_id=connection.id,
+        name="Sample Dashboard",
+        dashboard_id="sample_dashboard_id",
+        is_active=True,
+        created_at=now,
+        updated_at=now
+    )
+    db.add(dashboard)
+    
+    db.flush()
 
 if __name__ == "__main__":
-    seed() 
+    try:
+        seed_database()
+    except Exception as e:
+        logger.error(f"Error in seed_database: {str(e)}")
+        sys.exit(1) 

@@ -4,62 +4,39 @@ from sqlalchemy import String, ForeignKey, Enum as SQLEnum, Text, JSON, Integer,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum as PyEnum
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from app.db.base_class import Base
-
-
-class FileType(str, PyEnum):
-    """File type enum"""
-    DOCUMENT = "document"
-    IMAGE = "image"
-    AUDIO = "audio"
-    VIDEO = "video"
-    ARCHIVE = "archive"
-    OTHER = "other"
-
-
-class FileStatus(str, PyEnum):
-    """File status enum"""
-    UPLOADING = "uploading"
-    PROCESSING = "processing"
-    READY = "ready"
-    ERROR = "error"
-    DELETED = "deleted"
+from app.models.core.user import User
+from app.models.files.enums import FileType, FileStatus, StorageType
 
 
 class FileStorage(Base):
-    """File storage model"""
-    
+    """Model for file storage."""
     __tablename__ = "file_storage"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
-        ForeignKey("users.id", ondelete="CASCADE"), 
-        nullable=False
-    )
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[FileType] = mapped_column(SQLEnum(FileType), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    size: Mapped[int] = mapped_column(Integer, nullable=False)  # in bytes
-    status: Mapped[FileStatus] = mapped_column(SQLEnum(FileStatus), default=FileStatus.UPLOADING)
-    storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_type: Mapped[StorageType] = mapped_column(SQLEnum(StorageType), nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[FileStatus] = mapped_column(SQLEnum(FileStatus), nullable=False, default=FileStatus.PENDING)
+    report_id: Mapped[Optional[uuid.UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"))
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Add indexes for common queries
     __table_args__ = (
         Index('idx_file_storage_user_type', 'user_id', 'file_type'),
         Index('idx_file_storage_status_created', 'status', 'created_at'),
         Index('idx_file_storage_expires', 'expires_at'),
-        Index('idx_file_storage_entity', 'entity_type', 'entity_id'),
+        Index('idx_file_storage_report', 'report_id'),
     )
 
     # Relationships
@@ -82,7 +59,7 @@ class FileStorage(Base):
     )
     report: Mapped[Optional["Report"]] = relationship(
         "Report",
-        primaryjoin="and_(foreign(FileStorage.entity_type) == 'report', foreign(FileStorage.entity_id) == remote(Report.id))",
+        foreign_keys=[report_id],
         back_populates="attachments",
         passive_deletes=True
     )
@@ -101,9 +78,9 @@ class FileVersion(Base):
     
     __tablename__ = "file_versions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        PGUUID(as_uuid=True), 
         ForeignKey("file_storage.id", ondelete="CASCADE"), 
         nullable=False
     )
@@ -111,14 +88,14 @@ class FileVersion(Base):
     size: Mapped[int] = mapped_column(Integer, nullable=False)  # in bytes
     storage_path: Mapped[str] = mapped_column(String(512), nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        PGUUID(as_uuid=True), 
         ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=True
     )
     changes: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     is_current: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Add indexes for common queries
     __table_args__ = (
@@ -147,14 +124,14 @@ class FileAccessLog(Base):
     
     __tablename__ = "file_access_logs"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), 
+        PGUUID(as_uuid=True), 
         ForeignKey("file_storage.id", ondelete="CASCADE"), 
         nullable=False
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), 
+        PGUUID(as_uuid=True), 
         ForeignKey("users.id", ondelete="CASCADE"), 
         nullable=True
     )
@@ -162,8 +139,8 @@ class FileAccessLog(Base):
     ip_address: Mapped[Optional[str]] = mapped_column(String(45))
     user_agent: Mapped[Optional[str]] = mapped_column(String(255))
     additional_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Add indexes for common queries
     __table_args__ = (

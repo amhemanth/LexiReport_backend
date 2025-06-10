@@ -1,11 +1,12 @@
 from enum import Enum
+from app.models.common.enums import SyncStatus
 
 class IntegrationType(str, Enum):
-    """Types of BI integrations."""
-    POWER_BI = "power_bi"
-    TABLEAU = "tableau"
-    QLIK = "qlik"
-    LOOKER = "looker"
+    """Type of integration."""
+    BI = "bi"
+    API = "api"
+    DATABASE = "database"
+    FILE = "file"
     CUSTOM = "custom"
 
 class IntegrationStatus(str, Enum):
@@ -17,7 +18,8 @@ class IntegrationStatus(str, Enum):
     CONFIGURING = "configuring"
 
 class SyncFrequency(str, Enum):
-    """Frequency of data sync."""
+    """Frequency of synchronization."""
+    MANUAL = "manual"
     HOURLY = "hourly"
     DAILY = "daily"
     WEEKLY = "weekly"
@@ -32,9 +34,5 @@ class BIPlatformType(str, Enum):
     METABASE = "metabase"
     CUSTOM = "custom"
 
-class SyncStatus(str, Enum):
-    """Sync status enum"""
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed" 
+# Re-export SyncStatus from common
+__all__ = ['IntegrationType', 'IntegrationStatus', 'SyncFrequency', 'SyncStatus'] 

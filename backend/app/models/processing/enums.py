@@ -1,7 +1,8 @@
 from enum import Enum
+from app.models.common.enums import SyncStatus
 
 class ProcessingStatus(str, Enum):
-    """Status of document processing."""
+    """Status of a processing task."""
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -9,36 +10,39 @@ class ProcessingStatus(str, Enum):
     CANCELLED = "cancelled"
 
 class ProcessingPriority(str, Enum):
-    """Priority levels for processing."""
+    """Priority level for processing tasks."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
 
-class SyncStatus(str, Enum):
-    """Status of sync operations."""
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    PARTIAL = "partial"
+# Re-export SyncStatus from common
+__all__ = ['ProcessingStatus', 'ProcessingPriority', 'SyncStatus']
 
 class ProcessingType(str, Enum):
-    """Processing type enum"""
-    TEXT_EXTRACTION = "text_extraction"
-    SUMMARIZATION = "summarization"
-    INSIGHT_GENERATION = "insight_generation"
-    VOICE_OVER = "voice_over"
+    """Type of processing to be performed."""
+    DOCUMENT = "document"
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"
+    DATA = "data"
+    OTHER = "other"
 
 class ContentType(str, Enum):
-    """Content type enum"""
-    REPORT = "report"
-    DASHBOARD = "dashboard"
+    """Type of content being processed."""
+    TEXT = "text"
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"
     DOCUMENT = "document"
-    MEDIA = "media"
+    SPREADSHEET = "spreadsheet"
+    PRESENTATION = "presentation"
+    OTHER = "other"
 
 class SyncAction(str, Enum):
-    """Sync action enum"""
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete" 
+    """Type of synchronization action."""
+    PUSH = "push"
+    PULL = "pull"
+    BIDIRECTIONAL = "bidirectional"
+    MERGE = "merge"
+    OVERWRITE = "overwrite" 

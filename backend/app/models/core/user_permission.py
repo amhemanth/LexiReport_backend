@@ -36,6 +36,7 @@ class UserPermission(Base):
     creator: Mapped[Optional["User"]] = relationship(
         "User",
         foreign_keys=[created_by],
+        back_populates="created_user_permissions",
         passive_deletes=True
     )
 

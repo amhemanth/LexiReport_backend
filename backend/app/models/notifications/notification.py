@@ -31,6 +31,8 @@ class Notification(Base):
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # Add indexes for common queries
     __table_args__ = (
@@ -38,6 +40,7 @@ class Notification(Base):
         Index('idx_notification_type_created', 'notification_type', 'created_at'),
         Index('idx_notification_priority', 'priority'),
         Index('idx_notification_read', 'is_read'),
+        Index('idx_notification_entity', 'entity_type', 'entity_id'),
     )
 
     # Relationships
@@ -45,6 +48,13 @@ class Notification(Base):
         "User", 
         back_populates="notifications",
         passive_deletes=True
+    )
+    report: Mapped[Optional["Report"]] = relationship(
+        "Report",
+        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == Report.id)",
+        back_populates="notifications",
+        passive_deletes=True,
+        overlaps="comment"
     )
 
     def __repr__(self) -> str:

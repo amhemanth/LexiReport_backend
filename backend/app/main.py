@@ -25,10 +25,13 @@ from app.core.exceptions import (
     AuthenticationException,
     PermissionException,
     NotFoundException,
-    AIProcessingError
+    AIProcessingError,
+    RateLimitExceededError,
+    SecurityException
 )
 from app.core.model_cache import precache_models
 from sqlalchemy.exc import DatabaseError
+from app.core.logger import logger
 
 settings = get_settings()
 
@@ -37,14 +40,15 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=settings.DESCRIPTION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None
 )
 
 # Pre-cache models at server startup
@@ -53,15 +57,6 @@ precache_models()
 
 # Set up middleware
 setup_middleware(app)
-
-# Set up CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Add exception handlers
 app.add_exception_handler(HTTPException, http_exception_handler)
@@ -80,6 +75,21 @@ app.add_exception_handler(DatabaseError, lambda request, exc: JSONResponse(
 app.add_exception_handler(ValidationException, lambda request, exc: JSONResponse(
     status_code=400,
     content={"detail": str(exc.detail), "error_type": "validation_error"}
+))
+app.add_exception_handler(RateLimitExceededError, lambda request, exc: JSONResponse(
+    status_code=429,
+    content={
+        "detail": str(exc),
+        "error_type": "rate_limit_error"
+    },
+    headers={"Retry-After": "60"}
+))
+app.add_exception_handler(SecurityException, lambda request, exc: JSONResponse(
+    status_code=403,
+    content={
+        "detail": str(exc),
+        "error_type": "security_error"
+    }
 ))
 
 @app.exception_handler(RequestValidationError)
@@ -115,7 +125,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {"message": "Welcome to the API"}
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 async def health_check():

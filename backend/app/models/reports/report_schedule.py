@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
 from uuid import UUID, uuid4
-from sqlalchemy import String, ForeignKey, Text, JSON, Boolean, DateTime, Integer, Index
+from sqlalchemy import String, ForeignKey, Text, JSON, Boolean, DateTime, Integer, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.db.base_class import Base
@@ -44,12 +44,13 @@ class ReportSchedule(Base):
         passive_deletes=True
     )
 
-    # Indexes
+    # Add indexes and unique constraints
     __table_args__ = (
-        Index("ix_report_schedules_name", "name"),
-        Index("ix_report_schedules_active", "is_active"),
-        Index("ix_report_schedules_next_run", "next_run"),
-        Index("ix_report_schedules_created", "created_at"),
+        Index('idx_report_schedule_report', 'report_id'),
+        Index('idx_report_schedule_active', 'is_active'),
+        Index('idx_report_schedule_next_run', 'next_run'),
+        Index('idx_report_schedule_created', 'created_at'),
+        UniqueConstraint('report_id', 'name', name='uq_report_schedule_name'),
     )
 
     def __repr__(self) -> str:

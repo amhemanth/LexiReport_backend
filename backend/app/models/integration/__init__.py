@@ -10,13 +10,18 @@ from app.models.integration.bi_integration import (
     BISyncJob
 )
 from app.models.integration.enums import IntegrationType, IntegrationStatus, SyncFrequency
+from app.models.common.enums import SyncStatus
 
 __all__ = [
+    # BI Integration Models
     "BIConnection",
     "BIDashboard",
     "BIIntegration",
     "BISyncJob",
+    
+    # Enums
     "IntegrationType",
     "IntegrationStatus",
-    "SyncFrequency"
+    "SyncFrequency",
+    "SyncStatus"
 ] 

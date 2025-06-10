@@ -1,3 +1,4 @@
-from app.core.config import settings
+"""Core module initialization."""
+from app.config.settings import settings
 
 __all__ = ["settings"] 

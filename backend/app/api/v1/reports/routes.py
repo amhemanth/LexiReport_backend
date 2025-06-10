@@ -1,9 +1,10 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.orm import Session
 import uuid
 
 from app.core.deps import get_current_user, get_db
+from app.core.permissions import Permission, require_permissions
 from app.models.core.user import User
 from app.models.reports import (
     Report,
@@ -17,10 +18,18 @@ from app.schemas.report import (
     ReportCreate,
     ReportUpdate,
     ReportResponse,
+    ReportList,
     ReportTypeResponse,
     ReportStatusResponse
 )
+from app.schemas.report_comment import (
+    ReportCommentCreate,
+    ReportCommentUpdate,
+    ReportCommentResponse,
+    ReportCommentList
+)
 from app.services.report import ReportService
+from app.services.report_comment import report_comment_service
 from app.api.v1.reports.files import router as files_router
 from app.api.v1.reports.insights import router as insights_router
 
@@ -197,4 +206,72 @@ async def list_report_statuses(
 ) -> List[ReportStatusResponse]:
     """List all report statuses."""
     report_service = ReportService(db)
-    return await report_service.list_report_statuses() 
+    return await report_service.list_report_statuses()
+
+
+@router.get("/{report_id}/comments", response_model=ReportCommentList)
+@require_permissions([Permission.READ_COMMENTS])
+async def get_report_comments(
+    report_id: uuid.UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get comments for a report."""
+    return await report_comment_service.get_comments_by_report(
+        db, report_id=report_id, skip=skip, limit=limit
+    )
+
+
+@router.post("/{report_id}/comments", response_model=ReportCommentResponse, status_code=status.HTTP_201_CREATED)
+@require_permissions([Permission.WRITE_COMMENTS])
+async def create_report_comment(
+    report_id: uuid.UUID,
+    comment: ReportCommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new comment on a report."""
+    comment.report_id = report_id
+    return await report_comment_service.create_comment(db, user_id=current_user.id, obj_in=comment)
+
+
+@router.put("/comments/{comment_id}", response_model=ReportCommentResponse)
+@require_permissions([Permission.WRITE_COMMENTS])
+async def update_report_comment(
+    comment_id: uuid.UUID,
+    comment: ReportCommentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a report comment."""
+    return await report_comment_service.update_comment(
+        db, comment_id=comment_id, obj_in=comment
+    )
+
+
+@router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@require_permissions([Permission.WRITE_COMMENTS])
+async def delete_report_comment(
+    comment_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a report comment."""
+    await report_comment_service.delete_comment(db, comment_id=comment_id)
+
+
+@router.get("/comments/{comment_id}/replies", response_model=ReportCommentList)
+@require_permissions([Permission.READ_COMMENTS])
+async def get_report_comment_replies(
+    comment_id: uuid.UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get replies to a report comment."""
+    return await report_comment_service.get_replies(
+        db, comment_id=comment_id, skip=skip, limit=limit
+    ) 

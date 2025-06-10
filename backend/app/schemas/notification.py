@@ -14,6 +14,8 @@ class NotificationBase(BaseSchema):
     status: NotificationStatus = NotificationStatus.UNREAD
     metadata: Optional[Dict[str, Any]] = None
     action_url: Optional[str] = None
+    entity_type: Optional[str] = Field(None, max_length=50)
+    entity_id: Optional[uuid.UUID] = None
 
 class NotificationCreate(NotificationBase):
     """Schema for notification creation."""
@@ -26,6 +28,8 @@ class NotificationUpdate(NotificationBase):
     notification_type: Optional[NotificationType] = None
     priority: Optional[NotificationPriority] = None
     status: Optional[NotificationStatus] = None
+    entity_type: Optional[str] = Field(None, max_length=50)
+    entity_id: Optional[uuid.UUID] = None
 
 class NotificationInDB(NotificationBase, TimestampSchema):
     """Schema for notification in database."""

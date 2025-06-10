@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from sqlalchemy import String, ForeignKey, Text, JSON, Boolean, DateTime, Integer, Index, and_, UniqueConstraint
+from sqlalchemy import String, ForeignKey, Text, Boolean, DateTime, Index, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign, remote
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.db.base_class import Base
@@ -12,29 +12,24 @@ class Comment(Base):
     __tablename__ = "comments"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), 
-        ForeignKey("users.id", ondelete="CASCADE"), 
-        nullable=False
-    )
-    thread_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey("comment_threads.id", ondelete="SET NULL"),
-        nullable=True
-    )
-    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    entity_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    parent_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True), 
-        ForeignKey("comments.id", ondelete="CASCADE"), 
-        nullable=True
-    )
+    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    report_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    thread_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("comment_threads.id", ondelete="CASCADE"), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    is_edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    parent_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), ForeignKey("comments.id", ondelete="CASCADE"))
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Add indexes for common queries
+    __table_args__ = (
+        Index('idx_comment_user', 'user_id'),
+        Index('idx_comment_report', 'report_id'),
+        Index('idx_comment_parent', 'parent_id'),
+        Index('idx_comment_thread', 'thread_id'),
+        Index('idx_comment_created', 'created_at'),
+        Index('idx_comment_deleted', 'is_deleted'),
+    )
 
     # Relationships
     user: Mapped["User"] = relationship(
@@ -43,8 +38,15 @@ class Comment(Base):
         back_populates="comments",
         passive_deletes=True
     )
+    report: Mapped["Report"] = relationship(
+        "Report",
+        foreign_keys=[report_id],
+        back_populates="comments",
+        passive_deletes=True
+    )
     thread: Mapped[Optional["CommentThread"]] = relationship(
         "CommentThread",
+        foreign_keys=[thread_id],
         back_populates="comments",
         passive_deletes=True
     )
@@ -62,45 +64,29 @@ class Comment(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
-    report: Mapped[Optional["Report"]] = relationship(
-        "Report",
-        primaryjoin="and_(foreign(Comment.entity_type) == 'report', foreign(Comment.entity_id) == Report.id)",
-        back_populates="comments",
-        passive_deletes=True
-    )
     activities: Mapped[List["UserActivity"]] = relationship(
         "UserActivity",
-        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == Comment.id)",
         back_populates="comment",
+        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == remote(Comment.id))",
+        cascade="all, delete-orphan",
         passive_deletes=True,
-        overlaps="activities,report"
+        overlaps="report"
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog",
-        primaryjoin="and_(foreign(AuditLog.entity_type) == 'comment', foreign(AuditLog.entity_id) == Comment.id)",
         back_populates="comment",
-        passive_deletes=True,
-        overlaps="audit_logs,report"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     mentions: Mapped[List["User"]] = relationship(
         "User",
         secondary="comment_mentions",
         back_populates="mentioned_in_comments",
-        passive_deletes=True,
-        foreign_keys="[CommentMention.comment_id, CommentMention.user_id]"
-    )
-
-    # Indexes
-    __table_args__ = (
-        Index("ix_comments_user_id", "user_id"),
-        Index("ix_comments_entity_type", "entity_type"),
-        Index("ix_comments_entity_id", "entity_id"),
-        Index("ix_comments_parent_id", "parent_id"),
-        Index("ix_comments_created", "created_at"),
+        passive_deletes=True
     )
 
     def __repr__(self) -> str:
-        return f"<Comment(user_id={self.user_id}, entity_type='{self.entity_type}')>"
+        return f"<Comment(user_id={self.user_id}, report_id={self.report_id})>"
 
 
 class CommentThread(Base):

@@ -1,7 +1,9 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app.repositories.base import BaseRepository
-from app.models.core.user import User, UserRole
+from app.models.core.user import User, UserRole as UserRoleEnum
+from app.models.core.permission import Role
+from app.models.core.user_role import UserRole
 from app.models.core.password import Password
 from app.schemas.user import UserCreate, UserUpdate
 from datetime import datetime, timezone
@@ -14,13 +16,17 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         """Get user by email."""
         return db.query(User).filter(User.email == email).first()
 
+    def get_by_username(self, db: Session, *, username: str) -> Optional[User]:
+        """Get user by username."""
+        return db.query(User).filter(User.username == username).first()
+
     def create(
         self,
         db: Session,
         *,
         obj_in: UserCreate,
         hashed_password: str,
-        role: UserRole = UserRole.USER,
+        role: UserRoleEnum = UserRoleEnum.USER,
         is_active: bool = True
     ) -> User:
         """Create a new user."""
@@ -28,9 +34,9 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         db_obj = User(
             id=uuid.uuid4(),
             email=obj_in.email,
+            username=obj_in.username,
             full_name=obj_in.full_name,
             is_active=is_active,
-            role=role,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
@@ -47,7 +53,24 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
             created_at=datetime.now(timezone.utc)
         )
         db.add(password)
-        db.commit()
+
+        # Get role from database
+        role_obj = db.query(Role).filter(Role.name == role.value).first()
+        if not role_obj:
+            raise ValueError(f"Role {role.value} not found in database")
+
+        # Create user role
+        user_role = UserRole(
+            id=uuid.uuid4(),
+            user_id=db_obj.id,
+            role_id=role_obj.id,  # Use the role ID from the database
+            is_primary=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        db.add(user_role)
+
+        db.commit()  # Commit the transaction
         db.refresh(db_obj)
         return db_obj
 

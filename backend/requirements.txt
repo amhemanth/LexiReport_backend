@@ -1,6 +1,7 @@
 # Web Framework
 fastapi
 uvicorn[standard]
+itsdangerous>=2.1.2
 
 # Database
 sqlalchemy
@@ -27,7 +28,8 @@ python-dotenv
 dependency-injector
 
 # Caching
-redis
+redis>=4.5.0
+hiredis>=2.0.0
 
 # Logging
 structlog

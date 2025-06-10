@@ -20,8 +20,8 @@ class ReportQuery(Base):
     response_text: Mapped[Optional[str]] = mapped_column(String)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float)
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Add indexes for common queries
     __table_args__ = (

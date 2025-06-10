@@ -12,4 +12,21 @@ class EventType(str, Enum):
     USER_CREATE = "user_create"
     USER_UPDATE = "user_update"
     USER_DELETE = "user_delete"
-    SYSTEM_ERROR = "system_error" 
+    SYSTEM_ERROR = "system_error"
+
+class VoiceCommandStatus(str, Enum):
+    """Voice command status enum"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+class VoiceCommandType(str, Enum):
+    """Voice command type enum"""
+    REPORT = "report"
+    DASHBOARD = "dashboard"
+    SEARCH = "search"
+    NAVIGATION = "navigation"
+    SYSTEM = "system"
+    OTHER = "other" 

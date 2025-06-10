@@ -32,9 +32,11 @@ class RoleUpdate(BaseModel):
 class UserBase(BaseModel):
     """Base user schema."""
     email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50)
     full_name: str
     is_active: bool = True
     is_superuser: bool = False
+    role: UserRole = UserRole.USER
 
     @field_validator('email')
     @classmethod
@@ -50,9 +52,18 @@ class UserBase(BaseModel):
             return validate_full_name(v)
         return v
 
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        if v is not None:
+            if not v.isalnum() and not all(c.isalnum() or c in '._-' for c in v):
+                raise ValueError("Username can only contain letters, numbers, dots, underscores, and hyphens")
+        return v
+
 class UserCreate(UserBase):
     """User creation schema."""
     password: str = Field(..., min_length=8)
+    role: Optional[UserRole] = None  # Optional role for admin creation
 
     @field_validator('password')
     @classmethod
@@ -66,6 +77,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    role: Optional[UserRole] = None
 
     @field_validator('password')
     @classmethod
@@ -78,6 +90,8 @@ class UserInDBBase(UserBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    last_login: Optional[datetime] = None
+    permissions: List[str] = []
 
     class Config:
         from_attributes = True
@@ -87,6 +101,9 @@ class UserResponse(UserInDBBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    last_login: Optional[datetime] = None
+    permissions: List[str] = []
+    role: UserRole
 
     class Config:
         """Pydantic config."""
