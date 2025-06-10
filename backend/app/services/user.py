@@ -9,7 +9,7 @@ from app.repositories.user import user_repository
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.models.core.user import User
 from app.models.core.user_permission import UserPermission
-from app.models.core.user_activity import UserActivity
+from app.models.audit.user_activity import UserActivity
 from app.models.core.user_preferences import UserPreferences
 from app.models.core.permission import Permission
 from app.core.exceptions import (

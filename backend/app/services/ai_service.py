@@ -14,8 +14,7 @@ from app.config.settings import get_settings
 from app.models.reports import (
     Report,
     ReportInsight,
-    ReportContent,
-    ReportVersion
+    ReportContent
 )
 from app.schemas.insight import ReportInsightCreate, ReportInsightResponse
 from app.schemas.ai import AIRequest, AIResponse

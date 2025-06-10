@@ -21,7 +21,7 @@ from app.schemas.auth import (
     LoginAttempt, LoginResponse, RegisterRequest, EmailVerificationRequest
 )
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
-from app.models.core.user import User, UserRole
+from app.models.core.user import User
 from app.models.core.user_permission import UserPermission
 from app.models.core.permission import Permission
 from app.models.core.password import Password
@@ -44,6 +44,7 @@ from app.db.session import get_db
 from app.core.logger import logger
 from app.core.email import send_verification_email
 from app.services.email import email_service
+from app.models.core.enums import UserRole
 
 settings = get_settings()
 

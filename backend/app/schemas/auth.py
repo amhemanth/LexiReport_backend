@@ -7,7 +7,7 @@ from app.core.validators import (
     validate_email_format,
     validate_full_name
 )
-from app.models.core.user import UserRole
+from app.models.core.enums import UserRole
 from uuid import UUID
 import re
 

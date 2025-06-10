@@ -19,7 +19,7 @@ from app.core.exceptions import (
     DatabaseError
 )
 from app.core.logger import logger
-from app.models.core.user import UserRole
+from app.models.core.enums import UserRole
 
 router = APIRouter()
 

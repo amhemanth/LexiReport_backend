@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 from fastapi import HTTPException, status
 from app.repositories.report_comment import report_comment_repository
-from app.models.reports import ReportComment
+from app.models.comments.comment import Comment
 from app.schemas.report_comment import (
     ReportCommentCreate, ReportCommentUpdate, ReportCommentResponse,
     ReportCommentList

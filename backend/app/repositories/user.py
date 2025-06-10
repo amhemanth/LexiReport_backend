@@ -1,7 +1,8 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from app.repositories.base import BaseRepository
-from app.models.core.user import User, UserRole as UserRoleEnum
+from app.models.core.user import User
+from app.models.core.enums import UserRole as UserRoleEnum
 from app.models.core.permission import Role
 from app.models.core.user_role import UserRole
 from app.models.core.password import Password

@@ -1,10 +1,11 @@
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from app.core.deps import get_db, get_current_active_user, get_current_user
 from app.core.security import verify_password, get_password_hash
 from app.core.permissions import Permission, require_permission, require_admin
-from app.models.core.user import User, UserRole
+from app.models.core.user import User
 from app.models.core.enums import UserRole
 from app.repositories.user import UserRepository
 from app.services.user import UserService, user_service
@@ -15,7 +16,6 @@ from app.schemas.user import (
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
 import uuid
-from pydantic import BaseModel
 from app.core.exceptions import PermissionDeniedError
 
 class PermissionUpdate(BaseModel):

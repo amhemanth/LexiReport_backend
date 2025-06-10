@@ -23,8 +23,7 @@ from app.models.reports import (
     MetadataType,
     ReportInsight,
     ReportQuery,
-    ReportContent,
-    ReportVersion
+    ReportContent
 )
 from app.schemas.report import (
     ReportCreate,
@@ -565,29 +564,15 @@ class ReportService:
         db: Session,
         report: Report,
         changes_description: str
-    ) -> ReportVersion:
-        """Create a new version of the report."""
-        # Get the latest version number
-        latest_version = (
-            db.query(ReportVersion)
-            .filter(ReportVersion.report_id == report.id)
-            .order_by(ReportVersion.version_number.desc())
-            .first()
-        )
-        version_number = (latest_version.version_number + 1) if latest_version else 1
-
-        # Create new version
-        version = ReportVersion(
-            report_id=report.id,
-            version_number=version_number,
-            file_path=report.file_path,
-            changes_description=changes_description
-        )
-        db.add(version)
-        db.commit()
-        db.refresh(version)
-
-        return version
+    ) -> None:
+        """Create a new version of the report by updating metadata."""
+        # Update report metadata with version info
+        version_info = {
+            "version": report.metadata.get("version", 0) + 1,
+            "changes": changes_description,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        await self.update_metadata(db, report, version_info)
 
     async def update_metadata(
         self,
