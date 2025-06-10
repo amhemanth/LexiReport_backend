@@ -315,92 +315,104 @@ class AuthService:
             raise DatabaseError("Failed to verify email")
 
     async def login(self, db: Session, username_or_email: str, password: str, request: Request) -> LoginResponse:
-        """Authenticate user and return tokens with enhanced security."""
+        """Login user and return tokens."""
         try:
-            # Check rate limiting
-            self._check_rate_limit(username_or_email)
-            
-            # Get user by email or username
+            # Try to find user by email first
             user = user_repository.get_by_email(db, email=username_or_email)
             if not user:
-                # Try username if email not found
+                # If not found by email, try username
                 user = user_repository.get_by_username(db, username=username_or_email)
                 if not user:
-                    self._increment_login_attempts(username_or_email)
                     logger.error(f"Login attempt failed: User not found for {username_or_email}")
-                    raise AuthenticationError("Invalid credentials")
-            
+                    raise InvalidCredentialsError("Invalid credentials")
+
             # Check if user is active
             if not user.is_active:
-                logger.warning(f"Login attempt for inactive user: {username_or_email}")
                 raise InactiveUserError("User account is inactive")
 
-            # Check if email is verified (if the field exists)
-            if not getattr(user, 'email_verified', True):
-                logger.warning(f"Login attempt for unverified email: {username_or_email}")
-                raise ValidationException("Email not verified")
-            
             # Get current password
-            password_record = db.query(Password).filter(
+            current_password = db.query(Password).filter(
                 Password.user_id == user.id,
                 Password.is_current == True
             ).first()
-            if not password_record:
-                logger.error(f"Login attempt failed: No password found for user {user.id}")
-                raise AuthenticationError("Invalid credentials")
-            
+
+            if not current_password:
+                raise InvalidCredentialsError("Invalid credentials")
+
             # Verify password
-            if not verify_password(password, password_record.hashed_password):
-                self._increment_login_attempts(username_or_email)
-                logger.error(f"Login attempt failed: Invalid password for user {user.id}")
-                raise AuthenticationError("Invalid credentials")
-            
-            # Reset login attempts on successful login
-            self._reset_login_attempts(username_or_email)
-            
-            # Generate session ID
-            session_id = str(uuid.uuid4())
-            
-            # Manage user sessions
-            self._manage_user_sessions(str(user.id), session_id)
-            
-            # Generate tokens
-            access_token = create_access_token(
-                subject=str(user.id),
-                session_id=session_id
-            )
-            refresh_token = create_refresh_token(
-                subject=str(user.id),
-                session_id=session_id
-            )
-            
-            # Log successful login
-            logger.info(f"User {user.id} logged in successfully")
-            
-            # Record login attempt
+            if not verify_password(password, current_password.hashed_password):
+                logger.error(f"Login attempt failed: Invalid password for user {user.email}")
+                raise InvalidCredentialsError("Invalid credentials")
+
+            # Create access token
+            access_token = create_access_token(subject=str(user.id))
+            refresh_token = create_refresh_token(subject=str(user.id))
+
+            # Update last login
+            user.last_login = datetime.now(timezone.utc)
+            db.commit()
+
+            # Record successful login attempt
             login_attempt = LoginAttempt(
+                id=uuid.uuid4(),
                 user_id=user.id,
-                ip_address=request.client.host,
-                user_agent=request.headers.get("user-agent"),
+                ip_address=request.client.host if request else None,
+                user_agent=request.headers.get("user-agent") if request else None,
                 success=True
             )
             db.add(login_attempt)
             db.commit()
-            
+
+            logger.info(f"User {user.id} logged in successfully")
+
+            # Get user permissions
+            permissions = [p.name for p in user.permissions]
+
+            # Get primary role
+            primary_role = UserRole.USER  # Default role
+            if user.roles:
+                # Get the first role as primary role
+                primary_role = user.roles[0].name
+
+            # Create user response
+            user_response = UserResponse(
+                id=user.id,
+                email=user.email,
+                username=user.username,
+                full_name=user.full_name,
+                is_active=user.is_active,
+                is_superuser=user.is_superuser,
+                role=primary_role,
+                permissions=permissions,
+                created_at=user.created_at,
+                updated_at=user.updated_at,
+                last_login=user.last_login
+            )
+
             return LoginResponse(
                 access_token=access_token,
                 refresh_token=refresh_token,
                 token_type="bearer",
-                user=UserResponse.from_orm(user),
-                session_id=session_id
+                user=user_response,
+                session_id=str(uuid.uuid4())
             )
-            
-        except AuthenticationError as e:
-            logger.error(f"Authentication error during login: {str(e)}")
-            raise
+
+        except (InvalidCredentialsError, InactiveUserError) as e:
+            # Record failed login attempt
+            if user:
+                login_attempt = LoginAttempt(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    ip_address=request.client.host if request else None,
+                    user_agent=request.headers.get("user-agent") if request else None,
+                    success=False
+                )
+                db.add(login_attempt)
+                db.commit()
+            raise AuthenticationError(str(e))
         except Exception as e:
-            logger.error(f"Error during login: {str(e)}")
-            raise DatabaseError("Failed to login")
+            logger.error(f"Unexpected error during login: {str(e)}")
+            raise AuthenticationError("An unexpected error occurred during login")
 
     async def logout(self, db: Session, user_id: str, session_id: str) -> Dict[str, str]:
         """Logout user and invalidate session."""

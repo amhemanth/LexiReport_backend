@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, field_validator, constr, validator
+from typing import Optional, List, ForwardRef
+from pydantic import BaseModel, EmailStr, Field, field_validator, constr, validator, ConfigDict
 from .base import BaseSchema
 from app.core.validators import (
     validate_password_strength,
@@ -10,6 +10,9 @@ from app.core.validators import (
 from app.models.core.enums import UserRole
 from uuid import UUID
 import re
+
+# Create a forward reference for UserResponse
+UserResponse = ForwardRef('UserResponse')
 
 class UserBase(BaseModel):
     """Base user schema."""
@@ -98,8 +101,16 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
-    user: dict
+    user: UserResponse
     session_id: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Convert user to dict if it's a UserResponse object
+        if hasattr(self, 'user') and isinstance(self.user, UserResponse):
+            self.user = self.user.model_dump()
 
 class RegisterRequest(BaseModel):
     """Registration request schema."""

@@ -93,8 +93,23 @@ class UserInDBBase(UserBase):
     last_login: Optional[datetime] = None
     permissions: List[str] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Convert Permission objects to strings if needed
+        if hasattr(self, 'permissions') and self.permissions:
+            self.permissions = [p.name if hasattr(p, 'name') else str(p) for p in self.permissions]
+        # Ensure role is set
+        if not hasattr(self, 'role') or self.role is None:
+            self.role = UserRole.USER
+
+    @field_validator('permissions', mode='before')
+    @classmethod
+    def validate_permissions(cls, v):
+        if isinstance(v, list):
+            return [p.name if hasattr(p, 'name') else str(p) for p in v]
+        return v
 
 class UserResponse(UserInDBBase):
     """User response schema."""
@@ -103,11 +118,25 @@ class UserResponse(UserInDBBase):
     updated_at: datetime
     last_login: Optional[datetime] = None
     permissions: List[str] = []
-    role: UserRole
+    role: UserRole = UserRole.USER
 
-    class Config:
-        """Pydantic config."""
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Convert Permission objects to strings if needed
+        if hasattr(self, 'permissions') and self.permissions:
+            self.permissions = [p.name if hasattr(p, 'name') else str(p) for p in self.permissions]
+        # Ensure role is set
+        if not hasattr(self, 'role') or self.role is None:
+            self.role = UserRole.USER
+
+    @field_validator('permissions', mode='before')
+    @classmethod
+    def validate_permissions(cls, v):
+        if isinstance(v, list):
+            return [p.name if hasattr(p, 'name') else str(p) for p in v]
+        return v
 
 class UserInDB(UserInDBBase):
     """User in database schema."""
