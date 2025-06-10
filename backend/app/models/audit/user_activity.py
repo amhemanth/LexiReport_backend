@@ -35,13 +35,13 @@ class UserActivity(Base):
         "Report",
         back_populates="activities",
         passive_deletes=True,
-        primaryjoin="or_(foreign(UserActivity.report_id) == remote(Report.id), and_(foreign(UserActivity.entity_type) == 'report', foreign(UserActivity.entity_id) == remote(Report.id)))"
+        primaryjoin="or_(foreign(UserActivity.report_id) == Report.id, and_(foreign(UserActivity.entity_type) == 'report', foreign(UserActivity.entity_id) == Report.id))"
     )
     comment: Mapped[Optional["Comment"]] = relationship(
         "Comment",
         back_populates="activities",
         passive_deletes=True,
-        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == Comment.id)",
+        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == remote(Comment.id))",
         overlaps="report"
     )
 

@@ -74,7 +74,7 @@ class EntityTag(Base):
     )
     report: Mapped[Optional["Report"]] = relationship(
         "Report",
-        primaryjoin="and_(foreign(EntityTag.entity_type) == 'report', foreign(EntityTag.entity_id) == remote(Report.id))",
+        primaryjoin="and_(foreign(EntityTag.entity_type) == 'report', foreign(EntityTag.entity_id) == Report.id)",
         back_populates="tags",
         passive_deletes=True
     )

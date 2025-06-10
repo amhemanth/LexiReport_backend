@@ -69,6 +69,10 @@ class Settings(BaseSettings):
         description="PostgreSQL database name"
     )
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    SQL_ECHO: bool = Field(
+        default=False,
+        description="Enable SQL query logging"
+    )
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:

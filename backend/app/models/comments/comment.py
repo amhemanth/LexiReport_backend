@@ -67,7 +67,7 @@ class Comment(Base):
     activities: Mapped[List["UserActivity"]] = relationship(
         "UserActivity",
         back_populates="comment",
-        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == remote(Comment.id))",
+        primaryjoin="and_(foreign(UserActivity.entity_type) == 'comment', foreign(UserActivity.entity_id) == Comment.id)",
         cascade="all, delete-orphan",
         passive_deletes=True,
         overlaps="report"

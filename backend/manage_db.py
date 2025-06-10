@@ -8,13 +8,14 @@ from sqlalchemy_utils import database_exists, create_database, drop_database
 from app.config.settings import get_settings
 from app.db.base_class import Base
 from app.db.session import engine, SessionLocal
-from app.db.scripts.seed_db import seed_database
+from app.db.scripts.seed_db import seed_database, SeedingError
 from alembic.config import Config
 from alembic import command
 from contextlib import contextmanager
 import time
 from typing import Optional, List, Dict, Any
 import os
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +32,25 @@ def handle_database_errors():
     except Exception as e:
         logger.error(f"Database operation failed: {str(e)}", exc_info=True)
         raise
+
+def load_seed_config(config_path: Optional[str] = None) -> Optional[Dict]:
+    """Load seed configuration from file.
+    
+    Args:
+        config_path: Path to configuration file
+        
+    Returns:
+        Optional[Dict]: Configuration dictionary if file exists, None otherwise
+    """
+    if not config_path:
+        return None
+        
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading seed configuration: {str(e)}")
+        return None
 
 def run_migrations(version: Optional[str] = None):
     """Run database migrations."""
@@ -100,13 +120,17 @@ def reset_database_safe(confirm: bool = False):
         run_migrations()
         logger.info("Database reset completed successfully.")
 
-def seed_database_safe(force: bool = False):
+def seed_database_safe(force: bool = False, config_path: Optional[str] = None):
     """Safely seed the database with proper error handling.
     
     Args:
-        force: If True, will reseed even if data exists.
+        force: If True, will reseed even if data exists
+        config_path: Optional path to seed configuration file
     """
     with handle_database_errors():
+        # Load seed configuration if provided
+        config = load_seed_config(config_path)
+        
         # Check if data already exists
         if not force:
             with SessionLocal() as db:
@@ -118,12 +142,16 @@ def seed_database_safe(force: bool = False):
 
         # Ensure schema is up-to-date before seeding
         run_migrations()
-        try:
-            seed_database()
-            logger.info("Database seeding completed successfully.")
-        except Exception as e:
-            logger.error(f"Error seeding database: {str(e)}")
-            raise
+        
+        # Create a new session for seeding
+        with SessionLocal() as db:
+            try:
+                seed_database(db, force=force)
+                logger.info("Database seeding completed successfully.")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Error seeding database: {str(e)}")
+                raise
 
 def get_database_info() -> Dict[str, Any]:
     """Get database information."""
@@ -168,6 +196,7 @@ def main():
     parser.add_argument('--force', action='store_true', help='Force operation even if data exists')
     parser.add_argument('--confirm', action='store_true', help='Skip confirmation prompts')
     parser.add_argument('--version', help='Specific migration version to use')
+    parser.add_argument('--config', help='Path to seed configuration file')
     
     args = parser.parse_args()
     
@@ -180,11 +209,11 @@ def main():
             reset_database_safe(confirm=args.confirm)
         elif args.command == 'seed':
             logger.info("Seeding database...")
-            seed_database_safe(force=args.force)
+            seed_database_safe(force=args.force, config_path=args.config)
         elif args.command == 'reset-and-seed':
             logger.info("Starting reset-and-seed process...")
             reset_database_safe(confirm=args.confirm)
-            seed_database_safe(force=args.force)
+            seed_database_safe(force=args.force, config_path=args.config)
             logger.info("Reset and seed process completed successfully")
         elif args.command == 'migrate':
             logger.info("Running migrations...")

@@ -96,7 +96,8 @@ class Report(Base):
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        foreign_keys="UserActivity.report_id"
+        primaryjoin="or_(foreign(UserActivity.report_id) == Report.id, and_(foreign(UserActivity.entity_type) == 'report', foreign(UserActivity.entity_id) == Report.id))",
+        overlaps="activities,comment"
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog",
@@ -142,7 +143,7 @@ class Report(Base):
     )
     notifications: Mapped[List["Notification"]] = relationship(
         "Notification",
-        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == remote(Report.id))",
+        primaryjoin="and_(foreign(Notification.entity_type) == 'report', foreign(Notification.entity_id) == Report.id)",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
@@ -155,7 +156,7 @@ class Report(Base):
     )
     voice_commands: Mapped[List["VoiceCommand"]] = relationship(
         "VoiceCommand",
-        primaryjoin="and_(foreign(VoiceCommand.entity_type) == 'report', foreign(VoiceCommand.entity_id) == remote(Report.id))",
+        primaryjoin="and_(foreign(VoiceCommand.entity_type) == 'report', foreign(VoiceCommand.entity_id) == Report.id)",
         back_populates="report",
         cascade="all, delete-orphan",
         passive_deletes=True
