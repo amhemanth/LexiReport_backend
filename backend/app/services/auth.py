@@ -590,5 +590,34 @@ class AuthService:
             else:
                 self.login_attempts[email] = (1, datetime.utcnow())
 
+    def get_current_user(self, db: Session, token: str) -> User:
+        """Get current user from token."""
+        try:
+            # Verify token and get payload
+            payload = verify_token(token)
+            if not payload:
+                raise AuthenticationError("Invalid token")
+                
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                raise AuthenticationError("Invalid token payload")
+            
+            # Get user
+            user = user_repository.get(db, id=user_id)
+            if not user:
+                raise AuthenticationError("User not found")
+            
+            if not user.is_active:
+                raise AuthenticationError("User account is inactive")
+                
+            return user
+            
+        except AuthenticationError as e:
+            logger.error(f"Authentication error getting current user: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting current user: {str(e)}")
+            raise DatabaseError("Failed to get current user")
+
 # Create a singleton instance
 auth_service = AuthService() 
