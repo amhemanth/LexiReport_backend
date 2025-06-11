@@ -8,7 +8,7 @@ from app.core.security import verify_password
 from app.schemas.auth import (
     TokenResponse, RegisterRequest, RegisterResponse,
     EmailVerificationRequest, EmailVerificationResponse,
-    LoginResponse
+    LoginResponse, PasswordResetRequest, PasswordResetConfirm
 )
 from app.schemas.user import UserCreate, UserResponse, UserInDB
 from app.services.auth import auth_service, AuthService
@@ -222,4 +222,39 @@ async def get_me(
     current_user: UserResponse = Depends(get_current_user)
 ) -> UserResponse:
     """Get current user profile."""
-    return current_user 
+    return current_user
+
+@router.post("/forgot-password", response_model=Dict[str, str])
+async def forgot_password(
+    reset_request: PasswordResetRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> Dict[str, str]:
+    """Request password reset."""
+    with get_db() as db:
+        try:
+            return await auth_service.request_password_reset(db, reset_request.email)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to process forgot password request"
+            )
+
+@router.post("/reset-password", response_model=Dict[str, str])
+async def reset_password(
+    reset_data: PasswordResetConfirm,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> Dict[str, str]:
+    """Reset password with token."""
+    with get_db() as db:
+        try:
+            return await auth_service.reset_password(db, reset_data)
+        except ValidationException as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password"
+            ) 
