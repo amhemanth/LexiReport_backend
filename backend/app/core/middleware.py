@@ -1,43 +1,28 @@
 """Middleware configuration."""
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.gzip import GZipMiddleware
-from app.config.settings import get_settings
-from app.core.logger import logger
-from app.core.redis import redis_manager
 import time
 import uuid
+from typing import Callable
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.config.settings import get_settings
+from app.core.logger import (
+    logger,
+    api_logger,
+    security_logger,
+    error_logger
+)
+from app.core.redis import redis_manager
 
 settings = get_settings()
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses."""
-    
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        
-        # Skip security headers for docs
-        if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
-            return response
-        
-        # Add security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        
-        return response
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Log all requests with timing information."""
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = str(uuid.uuid4())
         start_time = time.time()
         
@@ -51,7 +36,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             process_time = time.time() - start_time
             
             # Log request details
-            logger.info(
+            api_logger.info(
                 f"Request completed",
                 extra={
                     "request_id": request_id,
@@ -70,7 +55,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             process_time = time.time() - start_time
-            logger.error(
+            error_logger.error(
                 f"Request failed",
                 extra={
                     "request_id": request_id,
@@ -84,34 +69,88 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             )
             raise
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting middleware."""
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        response = await call_next(request)
+        
+        # Skip security headers for docs
+        if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
+            return response
+        
+        # Add security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        
+        security_logger.debug(
+            "Security headers added to response",
+            extra={
+                "path": request.url.path,
+                "method": request.method
+            }
+        )
+        
+        return response
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Rate limiting middleware using Redis."""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip rate limiting for certain paths
-        if request.url.path in ["/health", "/metrics"]:
+        if request.url.path in ["/health", "/metrics", "/docs", "/redoc", "/openapi.json"]:
             return await call_next(request)
-            
+        
         client_ip = request.client.host
         key = f"rate_limit:{client_ip}"
         
-        # Get current request count
-        current = redis_manager.get_key(key)
-        if current is None:
-            # First request
-            redis_manager.set_key(key, 1, expire=60)  # 1 minute window
-        elif int(current) >= settings.RATE_LIMIT_PER_MINUTE:
-            # Rate limit exceeded
-            return Response(
-                content="Too many requests",
-                status_code=429,
-                headers={"Retry-After": "60"}
-            )
-        else:
-            # Increment counter
-            redis_manager.increment_key(key)
+        try:
+            # Get current request count
+            current = redis_manager.get_key(key)
+            if current is None:
+                # First request
+                redis_manager.set_key(key, 1, expire=60)  # 1 minute window
+            elif int(current) >= settings.RATE_LIMIT_PER_MINUTE:
+                # Rate limit exceeded
+                error_logger.warning(
+                    "Rate limit exceeded",
+                    extra={
+                        "client_ip": client_ip,
+                        "path": request.url.path,
+                        "current_count": current,
+                        "limit": settings.RATE_LIMIT_PER_MINUTE
+                    }
+                )
+                return Response(
+                    content="Too many requests",
+                    status_code=429,
+                    headers={"Retry-After": "60"}
+                )
+            else:
+                # Increment counter
+                redis_manager.increment_key(key)
+                
+            return await call_next(request)
             
-        return await call_next(request)
+        except Exception as e:
+            error_logger.error(
+                "Rate limiting error",
+                extra={
+                    "client_ip": client_ip,
+                    "path": request.url.path,
+                    "error": str(e)
+                }
+            )
+            # On Redis error, allow the request to proceed
+            return await call_next(request)
 
 def setup_middleware(app: FastAPI) -> None:
     """Set up all middleware for the application."""
@@ -139,7 +178,7 @@ def setup_middleware(app: FastAPI) -> None:
         session_cookie="session",
         max_age=settings.SESSION_EXPIRE_MINUTES * 60,
         same_site="lax",
-        https_only=False  # Allow HTTP for development
+        https_only=settings.ENVIRONMENT == "production"  # Only enforce HTTPS in production
     )
     
     # Add security headers
@@ -152,4 +191,6 @@ def setup_middleware(app: FastAPI) -> None:
     app.add_middleware(RateLimitMiddleware)
     
     # Add Gzip compression
-    app.add_middleware(GZipMiddleware, minimum_size=1000) 
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    
+    logger.info("Middleware setup completed") 

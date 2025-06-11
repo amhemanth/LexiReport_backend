@@ -31,15 +31,15 @@ from app.core.exceptions import (
 )
 from app.core.model_cache import precache_models
 from sqlalchemy.exc import DatabaseError
-from app.core.logger import logger
+from app.core.logger import (
+    logger,
+    api_logger,
+    error_logger,
+    db_logger,
+    security_logger
+)
 
 settings = get_settings()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 # Create FastAPI app
 app = FastAPI(
@@ -61,36 +61,13 @@ setup_middleware(app)
 # Add exception handlers
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(ValidationException, validation_exception_handler)
+app.add_exception_handler(LexiReportException, lexireport_exception_handler)
+app.add_exception_handler(AIProcessingError, ai_processing_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(AuthenticationException, base_auth_handler)
 app.add_exception_handler(PermissionException, base_permission_handler)
 app.add_exception_handler(NotFoundException, base_not_found_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(Exception, general_exception_handler)
-app.add_exception_handler(LexiReportException, lexireport_exception_handler)
-app.add_exception_handler(AIProcessingError, ai_processing_exception_handler)
-app.add_exception_handler(DatabaseError, lambda request, exc: JSONResponse(
-    status_code=500,
-    content={"detail": str(exc.detail), "error_type": "database_error"}
-))
-app.add_exception_handler(ValidationException, lambda request, exc: JSONResponse(
-    status_code=400,
-    content={"detail": str(exc.detail), "error_type": "validation_error"}
-))
-app.add_exception_handler(RateLimitExceededError, lambda request, exc: JSONResponse(
-    status_code=429,
-    content={
-        "detail": str(exc),
-        "error_type": "rate_limit_error"
-    },
-    headers={"Retry-After": "60"}
-))
-app.add_exception_handler(SecurityException, lambda request, exc: JSONResponse(
-    status_code=403,
-    content={
-        "detail": str(exc),
-        "error_type": "security_error"
-    }
-))
+app.add_exception_handler(DatabaseError, general_exception_handler)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -113,7 +90,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions."""
-    logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
+    error_logger.error(f"Unexpected error: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
@@ -133,4 +110,16 @@ async def health_check():
     return {"status": "healthy"}
 
 # Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR) 
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+@app.on_event("startup")
+async def startup_event():
+    """Log application startup."""
+    logger.info("Application starting up...")
+    db_logger.info("Database connection pool initialized")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Log application shutdown."""
+    logger.info("Application shutting down...")
+    db_logger.info("Closing database connections") 
