@@ -455,12 +455,8 @@ class AuthService:
                 raise AuthenticationError("User account is inactive")
             
             # Generate new tokens
-            access_token = create_access_token(
-                data={"sub": str(user.id), "email": user.email}
-            )
-            new_refresh_token = create_refresh_token(
-                data={"sub": str(user.id)}
-            )
+            access_token = create_access_token(subject=str(user.id))
+            new_refresh_token = create_refresh_token(subject=str(user.id))
             
             return TokenResponse(
                 access_token=access_token,

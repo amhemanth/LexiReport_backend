@@ -169,7 +169,7 @@ def revoke_all_user_tokens(user_id: str):
             session_id = session.split(":")[1]
             revoke_token(session_id)
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str, token_type: Optional[str] = None) -> Dict[str, Any]:
     """Verify a JWT token and return its payload."""
     try:
         payload = jwt.decode(
@@ -183,11 +183,14 @@ def verify_token(token: str) -> Dict[str, Any]:
         if not session_id:
             raise SecurityException("Invalid token format")
             
-        token_type = payload.get("type")
-        if token_type == "access":
+        payload_token_type = payload.get("type")
+        if token_type and payload_token_type != token_type:
+            raise SecurityException(f"Invalid token type. Expected {token_type}, got {payload_token_type}")
+            
+        if payload_token_type == "access":
             if not redis_client.exists(f"session:{session_id}"):
                 raise SecurityException("Token has been revoked")
-        elif token_type == "refresh":
+        elif payload_token_type == "refresh":
             if not redis_client.exists(f"refresh_token:{session_id}"):
                 raise SecurityException("Token has been revoked")
                 

@@ -1,6 +1,6 @@
 """Authentication routes."""
 from typing import Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Body, Query
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -192,12 +192,20 @@ async def logout(
 
 @router.post("/refresh-token", response_model=TokenResponse)
 async def refresh_token(
-    refresh_token: str
+    refresh_token: str = Query(None),
+    refresh_token_data: dict = Body(None, embed=True)
 ) -> TokenResponse:
     """Refresh access token."""
     with get_db() as db:
         try:
-            return await auth_service.refresh_token(db, refresh_token)
+            # Get token from either query parameter or request body
+            token = refresh_token or (refresh_token_data.get("refresh_token") if refresh_token_data else None)
+            if not token:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Refresh token is required"
+                )
+            return await auth_service.refresh_token(db, token)
         except AuthenticationError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
