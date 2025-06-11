@@ -21,10 +21,19 @@ class Settings(BaseSettings):
     DESCRIPTION: str = Field(default="LexiReport Backend API", description="API description")
     SERVER_NAME: str = Field(default="localhost", description="Server name")
     SERVER_HOST: str = Field(default="0.0.0.0", description="Server host")
-    ALLOWED_HOSTS: List[str] = Field(
-        default=["localhost", "127.0.0.1"],
-        description="List of allowed host names"
+    
+    # Parse ALLOWED_HOSTS from environment variable
+    ALLOWED_HOSTS: str = Field(
+        default="localhost,127.0.0.1",
+        description="Comma-separated list of allowed host names"
     )
+
+    @property
+    def ALLOWED_HOSTS(self) -> List[str]:
+        """Get the list of allowed hosts."""
+        if not self.ALLOWED_HOSTS_STR:
+            return ["localhost", "127.0.0.1"]
+        return [host.strip() for host in self.ALLOWED_HOSTS.split(",") if host.strip()]
 
     # CORS Configuration
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
@@ -284,7 +293,12 @@ class Settings(BaseSettings):
             raise ValueError("Value must be positive")
         return v
 
-    model_config = ConfigDict(extra='allow', from_attributes=True, env_file='.env')
+    model_config = ConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8',
+        case_sensitive=True,
+        extra='allow'
+    )
 
 def get_settings() -> Settings:
     """Get application settings."""
